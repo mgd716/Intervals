@@ -7,11 +7,10 @@ from supabase import create_client, Client
 # ==================== CONFIGURATION ====================
 ATHLETE_ID = os.getenv("INTERVALS_ATHLETE_ID")
 API_KEY = os.getenv("INTERVALS_API_KEY")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Using .strip() to remove any accidental hidden spaces or newlines
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
 # =======================================================
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def fetch_activities():
     base_url = "https://intervals.icu/"
@@ -36,17 +35,30 @@ def fetch_gps_stream(activity_id):
                     lats = stream.get("data", [])
                     lngs = stream.get("data2", [])
                     if lats and lngs:
-                        # Compress and round the data just like before
                         return [[round(lat, 5), round(lng, 5)] for lat, lng in zip(lats, lngs)][::4]
     return None
 
 def main():
+    # --- Debugging Block ---
+    print("--- Credential Check ---")
+    print(f"ATHLETE_ID: {'Loaded' if ATHLETE_ID else 'Missing'}")
+    print(f"API_KEY: {'Loaded' if API_KEY else 'Missing'}")
+    print(f"SUPABASE_URL: '{SUPABASE_URL}'")
+    print(f"SUPABASE_KEY: {'Loaded' if SUPABASE_KEY else 'Missing'}")
+    print("------------------------")
+
     if not all([ATHLETE_ID, API_KEY, SUPABASE_URL, SUPABASE_KEY]):
-        print("Error: Missing credentials in GitHub Secrets!")
+        print("Error: Missing credentials. Check your GitHub Secrets!")
+        return
+        
+    if not SUPABASE_URL.startswith("http"):
+        print("Error: SUPABASE_URL must start with http:// or https://")
         return
 
     try:
-        # Get all existing IDs from the database to avoid duplicate downloads
+        # We initialize the client HERE so the script can validate the strings first
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        
         existing_records = supabase.table("activities").select("id").execute()
         existing_ids = {str(row["id"]) for row in existing_records.data}
         
@@ -71,14 +83,13 @@ def main():
             
             if coordinates:
                 new_downloads += 1
-                # Insert the single row into the Supabase ledger
                 supabase.table("activities").insert({
                     "id": act_id,
                     "type": act_type,
                     "name": act_name,
                     "year": act_year,
                     "coordinates": coordinates,
-                    "raw_data": act # <--- Dumps every single field into the database
+                    "raw_data": act 
                 }).execute()
                 time.sleep(0.2) 
 
