@@ -254,8 +254,15 @@
 
         const allPolylines = [];
 
-        activities.forEach(activity => {
+       activities.forEach(activity => {
             if (!activity.coordinates || activity.coordinates.length === 0) return;
+
+            // NEW: Instantly load pre-calculated tiles from the database
+            if (activity.visited_tiles) {
+                activity.visited_tiles.forEach(tile => visitedTiles.add(tile));
+            }
+
+            // ... [The rest of your line drawing and sidebar code stays exactly the same!] ...
 
             // Log visited tiles
             activity.coordinates.forEach(coord => {
