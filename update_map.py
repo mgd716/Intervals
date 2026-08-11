@@ -109,7 +109,7 @@ def main():
                     activity_tiles.add(get_tile(lat, lng, 14)) # Squadrat
                     activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
                 
-               # Use UPSERT to save the data and the new metrics
+               # Use UPSERT to save all core metrics, performance data, and tiles
                 supabase.table("activities").upsert({
                     "id": act_id,
                     "type": act_type,
@@ -121,8 +121,16 @@ def main():
                     "elapsed_time": act.get("elapsed_time", 0),
                     "calories": act.get("calories", 0),
                     "total_elevation_gain": act.get("total_elevation_gain", 0.0),
-                    "max_elevation": act.get("elev_high", 0.0), # The API uses 'elev_high'
+                    "max_elevation": act.get("elev_high", 0.0),
                     "tss": act.get("tss", 0.0),
+                    
+                    # NEW: Performance Metrics
+                    "average_heartrate": act.get("average_heartrate", 0.0),
+                    "max_heartrate": act.get("max_heartrate", 0.0),
+                    "average_watts": act.get("average_watts", 0.0),
+                    "average_cadence": act.get("average_cadence", 0.0),
+                    "work": act.get("work", 0.0),
+                    
                     "coordinates": coordinates,
                     "raw_data": act,
                     "visited_tiles": list(activity_tiles)
