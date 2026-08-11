@@ -604,31 +604,7 @@
                 // Stop the click from passing through to the map beneath it
                 L.DomEvent.stopPropagation(e); 
             });
-      
-                         
-                if (targetCard) {
-                    // 1. Smoothly scroll the sidebar until the card is in the center
-                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // 2. Collapse any currently open extended stats
-                    document.querySelectorAll('.extended-stats').forEach(el => {
-                        el.style.display = 'none';
-                    });
-                    
-                    // 3. Expand the stats for this specific activity
-                    targetCard.querySelector('.extended-stats').style.display = 'block';
-                    
-                    // 4. Make the card flash yellow for a second so your eye catches it
-                    const originalBg = targetCard.style.background;
-                    targetCard.style.background = '#ffff99'; // Bright yellow
-                    targetCard.style.transition = 'background 0.5s'; // Smooth fade
-                    
-                    setTimeout(() => {
-                        targetCard.style.background = originalBg;
-                    }, 1500); // Fades out after 1.5 seconds
-                }
-            });
-            
+                 
             runningMapLines.push(line);
             allPolylines.push(line);
 
