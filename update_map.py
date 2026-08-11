@@ -68,8 +68,18 @@ def main():
         # We initialize the client HERE so the script can validate the strings first
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         
-        existing_records = supabase.table("activities").select("id").execute()
-        existing_ids = {str(row["id"]) for row in existing_records.data}
+        # 1. Fetch ALL existing IDs by paginating in chunks of 1000
+        existing_ids = set()
+        start = 0
+        chunk_size = 1000
+        
+        while True:
+            response = supabase.table("activities").select("id").range(start, start + chunk_size - 1).execute()
+            if not response.data:
+                break
+            for row in response.data:
+                existing_ids.add(str(row["id"]))
+            start += chunk_size
         
         activities = fetch_activities()
         print(f"Checking {len(activities)} total activities against {len(existing_ids)} in database...")
@@ -100,7 +110,7 @@ def main():
                     activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
                 
                 # Insert everything into Supabase
-                supabase.table("activities").insert({
+                supabase.table("activities").upsert({
                     "id": act_id,
                     "type": act_type,
                     "name": act_name,
