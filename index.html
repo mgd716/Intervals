@@ -137,9 +137,10 @@
                 <label><input type="checkbox" id="filter-swim" value="Swim" checked onchange="filterSidebar()"> Swimming</label>
                 <label><input type="checkbox" id="filter-other" value="Other" checked onchange="filterSidebar()"> Other</label>
                 
-                <!-- NEW: Squadrats Toggle -->
+                <!-- NEW: Squadrats Toggles -->
                 <div style="width: 100%; height: 1px; background: #eee; margin: 5px 0;"></div>
-                <label><input type="checkbox" id="filter-tiles" checked onchange="toggleTiles()"> Show Squadrats</label>
+                <label><input type="checkbox" id="filter-squadrats" onchange="drawTileGrid()"> Squadrats (14)</label>
+                <label><input type="checkbox" id="filter-squadratinhos" onchange="drawTileGrid()"> Squadratinhos (17)</label>
             </div>
         </div>
         
@@ -187,11 +188,10 @@
     // ==========================================
     // 3. TILE GRID LOGIC
     // ==========================================
-    function drawTileGrid() {
-        gridLayerGroup.clearLayers();
-        const bounds = map.getBounds();
-        const targetZoom = 14; 
-
+    // ==========================================
+    // 3. TILE GRID LOGIC
+    // ==========================================
+    function drawGridForZoom(targetZoom, bounds, baseColor) {
         const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
         const sePoint = map.project(bounds.getSouthEast(), targetZoom);
         
@@ -199,6 +199,14 @@
         const maxX = Math.floor(sePoint.x / 256);
         const minY = Math.floor(nwPoint.y / 256);
         const maxY = Math.floor(sePoint.y / 256);
+
+        // SAFETY LIMIT: Prevent browser crash if zoomed out too far
+        // If the screen requires more than 3,000 tiles, abort drawing this layer
+        const totalTiles = (maxX - minX + 1) * (maxY - minY + 1);
+        if (totalTiles > 3000) {
+            console.log(`Skipping zoom ${targetZoom} grid: too many tiles (${totalTiles}). Zoom in closer!`);
+            return; 
+        }
 
         for (let x = minX; x <= maxX; x++) {
             for (let y = minY; y <= maxY; y++) {
@@ -208,14 +216,33 @@
                 const tileKey = `${targetZoom}_${x}_${y}`;
                 const isVisited = visitedTiles.has(tileKey);
 
-                const currentStyle = { color: "#ff7800", weight: 1, fillOpacity: 0 };
+                // 'interactive: false' speeds up Leaflet because it stops listening for clicks on the tiles
+                const currentStyle = { color: baseColor, weight: 1, fillOpacity: 0, interactive: false };
                 if (isVisited) {
-                    currentStyle.fillColor = "#ff7800";
+                    currentStyle.fillColor = baseColor;
                     currentStyle.fillOpacity = 0.4;
                 }
                 
                 L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(gridLayerGroup);
             }
+        }
+    }
+
+    function drawTileGrid() {
+        gridLayerGroup.clearLayers();
+        const bounds = map.getBounds();
+
+        const show14 = document.getElementById('filter-squadrats').checked;
+        const show17 = document.getElementById('filter-squadratinhos').checked;
+
+        // Draw Zoom 14 in Orange
+        if (show14) {
+            drawGridForZoom(14, bounds, "#ff7800"); 
+        }
+        
+        // Draw Zoom 17 in Blue
+        if (show17) {
+            drawGridForZoom(17, bounds, "#0066ff"); 
         }
     }
 
