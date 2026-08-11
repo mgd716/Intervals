@@ -172,7 +172,8 @@
 <div id="app-container">
     <div id="map"></div>
     
-   <div class="sidebar-header">
+    <div id="sidebar">
+        <div class="sidebar-header">
             <select id="year-select" onchange="filterMapByYear()">
                 <option value="ALL">Show All Years</option>
             </select>
@@ -399,13 +400,16 @@
             // Draw Line
             const config = getSportConfig(activity.type);
             const line = L.polyline(activity.coordinates, {
-                line.sportType = activity.type; // <-- Add this tag so we can recolor it later
+               
                 color: config.color,
                 weight: 3,
                 opacity: 0.8,
                 smoothFactor: 0
             });
+           
+            line.sportType = activity.type; // <-- Add this tag so we can recolor it later
 
+           
             line.bindPopup(`<a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="text-decoration: none; color: #0066ff;"><strong>${activity.name}</strong></a>`);
             line.addTo(config.group);
             
@@ -452,10 +456,7 @@
                 }
             }
 
-            // Build Sidebar Item
-            const listItem = document.createElement('div');
-            listItem.className = 'activity-item';
-            listItem.setAttribute('data-type', activity.type);
+           
             
             // Build Sidebar Item
             const listItem = document.createElement('div');
