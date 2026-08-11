@@ -400,11 +400,10 @@
             // Draw Line
             const config = getSportConfig(activity.type);
             const line = L.polyline(activity.coordinates, {
-               
                 color: config.color,
-                weight: 3,
-                opacity: 0.8,
-                smoothFactor: 0
+                weight: 4,          // INCREASED: Thicker lines look better for heatmaps
+                opacity: 0.15,      // DECREASED: This is the magic heatmap number!
+                smoothFactor: 1
             });
            
             line.sportType = activity.type; // <-- Add this tag so we can recolor it later
