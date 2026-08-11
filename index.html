@@ -385,7 +385,10 @@
 
         const allPolylines = [];
 
-        activities.forEach(activity => {
+       activities.forEach(activity => {
+            // NEW: Ignore virtual rides so fake GPS data doesn't ruin the map
+            if (activity.type === 'VirtualRide') return;
+            
             if (!activity.coordinates || activity.coordinates.length === 0) return;
 
             // Load pre-calculated tiles from the database
