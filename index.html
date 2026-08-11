@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Personal Tracker Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial, sans-serif; background-color: #111; }
+        #map { height: 100vh; width: 100%; position: absolute; z-index: 1; }
+        #sidebar {
+            position: absolute; top: 20px; left: 20px; background: rgba(30, 30, 30, 0.9);
+            color: white; padding: 15px; border-radius: 8px; z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 160px;
+        }
+        #year-select { width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+        .leaflet-popup-content-wrapper { background: #222; color: #fff; border-radius: 4px; }
+        .leaflet-popup-tip { background: #222; }
+    </style>
+  <!-- Add this to your <head> section right below your Leaflet scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div id="sidebar">
+        <label style="font-weight:bold; display:block; margin-bottom:5px;">Filter by Year</label>
+        <select id="year-select" onchange="filterMapByYear()">
+            <option value="ALL">Show All Years</option>
+        </select>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        const map = L.map('map').setView([0, 0], 2);
+
+       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+
+        const layers = {
+            'Runs': L.layerGroup().addTo(map),
+            'Rides': L.layerGroup().addTo(map),
+            'Hikes': L.layerGroup().addTo(map),
+            'Swims': L.layerGroup().addTo(map),
+            'Other': L.layerGroup().addTo(map),
+            'Squadrats (z14)': L.layerGroup().addTo(map),
+            'Squadratinhos (z17)': L.layerGroup() // Left off by default
+        };
+
+        L.control.layers(null, layers, { collapsed: false }).addTo(map);
+
+        function getSportConfig(type) {
+            switch(type) {
+                case 'Run': return { color: '#ff4500', group: layers['Runs'] };
+                case 'Ride': case 'VirtualRide': return { color: '#00ced1', group: layers['Rides'] };
+                case 'Hike': case 'Walk': return { color: '#32cd32', group: layers['Hikes'] };
+                case 'Swim': return { color: '#1e90ff', group: layers['Swims'] };
+                default: return { color: '#ffffff', group: layers['Other'] };
+            }
+        }
+
+        let rawActivitiesCache = [];
+        let runningMapLines = [];
+        const visitedTiles = new Set(); // Stores our completed squares
+let availableYears = [];
+
+      // Replace your entire fetch() block and loadData() function with this:
+
+const _supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
+
+let runningMapLines = [];
+const visitedTiles = new Set(); 
+
+// 1. Ask the database what unique years exist to build the dropdown
+_supabase.from('activities').select('year').order('year', { ascending: false })
+    .then(response => {
+        const uniqueYears = [...new Set(response.data.map(item => item.year))];
+        const dropdown = document.getElementById('year-select');
+        
+        uniqueYears.forEach(year => {
+            if (year > 0) {
+                const opt = document.createElement('option');
+                opt.value = year; opt.textContent = year;
+                dropdown.appendChild(opt);
+            }
+        });
+
+        loadData("ALL");
+    });
+
+// 2. Query the database based on the dropdown selection
+async function loadData(targetYear) {
+    runningMapLines.forEach(line => line.remove());
+    runningMapLines = [];
+    visitedTiles.clear();
+    
+    let query = _supabase.from('activities').select('*');
+    
+    // If a specific year is selected, append a WHERE clause to the query
+    if (targetYear !== "ALL") {
+        query = query.eq('year', parseInt(targetYear));
+    }
+
+    const { data: activities, error } = await query;
+    
+    if (error) {
+        console.error("Database query failed:", error);
+        return;
+    }
+
+    const allPolylines = [];
+
+    activities.forEach(activity => {
+        if (!activity.coordinates || activity.coordinates.length === 0) return;
+
+        activity.coordinates.forEach(coord => {
+            const latlng = L.latLng(coord[0], coord[1]);
+            
+            const p14 = map.project(latlng, 14);
+            visitedTiles.add(`14_${Math.floor(p14.x / 256)}_${Math.floor(p14.y / 256)}`);
+
+            const p17 = map.project(latlng, 17);
+            visitedTiles.add(`17_${Math.floor(p17.x / 256)}_${Math.floor(p17.y / 256)}`);
+        });
+
+        const config = getSportConfig(activity.type);
+        const line = L.polyline(activity.coordinates, {
+            color: config.color,
+            weight: 3,
+            opacity: 0.8,
+            smoothFactor: 0
+        });
+
+        line.bindPopup(`<a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="color: #4da6ff; text-decoration: none;"><strong>${activity.name}</strong></a><br><small>${activity.type} | ${activity.year}</small>`);
+        line.addTo(config.group);
+        
+        runningMapLines.push(line);
+        allPolylines.push(line);
+    });
+
+    drawTileGrid(); 
+
+    if (allPolylines.length > 0) {
+        const group = L.featureGroup(allPolylines);
+        map.fitBounds(group.getBounds(), { padding: [50, 50] });
+    }
+}
+
+function filterMapByYear() {
+    loadData(document.getElementById('year-select').value);
+}
+
+        function drawTileGrid() {
+            layers['Squadrats (z14)'].clearLayers();
+            layers['Squadratinhos (z17)'].clearLayers();
+            
+            const currentZoom = map.getZoom();
+            const bounds = map.getBounds();
+
+            // Reusable function to calculate and draw any zoom level grid
+            function drawGrid(targetZoom, layerGroup, style, minZoomVisible) {
+                // Prevent browser crashes by hiding grids when zoomed out too far
+                if (currentZoom < minZoomVisible) return;
+
+                const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
+                const sePoint = map.project(bounds.getSouthEast(), targetZoom);
+
+                const minX = Math.floor(nwPoint.x / 256);
+                const maxX = Math.floor(sePoint.x / 256);
+                const minY = Math.floor(nwPoint.y / 256);
+                const maxY = Math.floor(sePoint.y / 256);
+
+                // Hard safety limit: don't draw more than 4,000 rectangles at once
+                if ((maxX - minX) * (maxY - minY) > 4000) return;
+
+                for (let x = minX; x <= maxX; x++) {
+                    for (let y = minY; y <= maxY; y++) {
+                        const tileNw = map.unproject(L.point(x * 256, y * 256), targetZoom);
+                        const tileSe = map.unproject(L.point((x + 1) * 256, (y + 1) * 256), targetZoom);
+                        
+                        // Check if this specific tile exists in our visited list
+                        const tileKey = `${targetZoom}_${x}_${y}`;
+                        const isVisited = visitedTiles.has(tileKey);
+
+                        // Clone the base style so we don't accidentally overwrite it
+                        const currentStyle = Object.assign({}, style);
+                        
+                        if (isVisited) {
+                            currentStyle.fillColor = style.color; // Use the border color for the fill
+                            currentStyle.fillOpacity = 0.4;       // Fill it in!
+                        }
+                        
+                        L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(layerGroup);
+                    }
+                }
+            }
+
+            // Draw z14 (Squadrats) - Thick orange lines, visible when zoom >= 12
+            if (map.hasLayer(layers['Squadrats (z14)'])) {
+                drawGrid(14, layers['Squadrats (z14)'], {
+                    color: '#ff9900', 
+                    weight: 2,           
+                    fillOpacity: 0,      
+                    interactive: false   
+                }, 12);
+            }
+
+            // Draw z17 (Squadratinhos) - Thin grey lines, visible when zoom >= 15
+            if (map.hasLayer(layers['Squadratinhos (z17)'])) {
+                drawGrid(17, layers['Squadratinhos (z17)'], {
+                    color: '#777777', 
+                    weight: 1,           
+                    fillOpacity: 0,      
+                    interactive: false   
+                }, 15);
+            }
+        }
+
+        // Redraw when the map moves OR when a user toggles a layer in the menu
+        map.on('moveend overlayadd overlayremove', drawTileGrid);
+        
+        // Trigger the first draw
+        drawTileGrid();
+    </script>
+</body>
+</html>
