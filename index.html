@@ -254,6 +254,18 @@
     let runningMapLines = [];
     const visitedTiles = new Set();
 
+    // NEW: Tracking variables for the clustering feature
+    let selectedActivityIds = null; 
+    let activeHoverLines = [];
+    const clusterPopup = L.popup({ autoPan: false, closeButton: false });
+    
+    // NEW: Click anywhere on empty map space to clear the sidebar filter
+    map.on('click', function() {
+        selectedActivityIds = null;
+        filterSidebar();
+        document.getElementById('search-box').placeholder = "Search activities...";
+    });
+
     function getSportConfig(type) {
         if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
         if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
@@ -328,7 +340,33 @@
     // ==========================================
     // 4. DATA LOADING & UI
     // ==========================================
-    
+    // ==========================================
+    // NEW: SPATIAL SEARCH 
+    // ==========================================
+    function getOverlappingLines(latlng, tolerancePixels = 10) {
+        const point = map.project(latlng);
+        const matches = [];
+        
+        runningMapLines.forEach(line => {
+            if (!map.hasLayer(line)) return; // Skip hidden sports
+            
+            // Fast bounds check so we don't calculate math for lines on the other side of the country
+            const bounds = line.getBounds();
+            if (!bounds.isValid() || !bounds.pad(0.01).contains(latlng)) return; 
+            
+            // Detailed point-to-line distance check
+            const coords = line.getLatLngs();
+            for (let i = 0; i < coords.length - 1; i++) {
+                const p1 = map.project(coords[i]);
+                const p2 = map.project(coords[i+1]);
+                if (L.LineUtil.pointToSegmentDistance(point, p1, p2) <= tolerancePixels) {
+                    matches.push(line);
+                    break; // Found a match, move to the next activity
+                }
+            }
+        });
+        return matches;
+    }
     // 1. Safely load ALL years for the dropdown by paginating
     async function initDropdown() {
         let allYears = [];
@@ -430,35 +468,67 @@
                 });
             }
 
-            // UPDATE: Add the date beneath the link
-            line.bindPopup(
-                `<div style="text-align: center;">
-                    <a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="text-decoration: none; color: #0066ff; font-size: 14px;">
-                        <strong>${activity.name}</strong>
-                    </a>
-                    <br>
-                    <span style="font-size: 12px; color: #666;">${dateStr}</span>
-                </div>`
-            );
-            
+         // Attach the data directly to the line so we can read it on hover
+            line.activityData = activity;
+            line.sportType = activity.type; 
             line.addTo(config.group);
-
-            // UPDATE: Trigger popup on hover
+            
+            // 1. CLUSTER HOVER
             line.on('mouseover', function (e) {
-                this.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
-                this.bringToFront();
+                activeHoverLines = getOverlappingLines(e.latlng, 10);
                 
-                // This tells Leaflet to open the popup exactly where your mouse is pointing
-                this.openPopup(e.latlng); 
+                // Sort by date, newest first
+                activeHoverLines.sort((a, b) => new Date(b.activityData.start_date || b.activityData.year) - new Date(a.activityData.start_date || a.activityData.year));
+                
+                let html = '<div style="font-family: Arial; text-align: left; max-height: 200px; overflow-y: auto;">';
+                
+                activeHoverLines.forEach((l, index) => {
+                    // Turn all overlapping lines yellow
+                    l.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                    l.bringToFront();
+                    
+                    // Build the popup list (limiting to 5 so it doesn't cover the screen)
+                    if (index < 5) {
+                        const act = l.activityData;
+                        const dateStr = act.start_date ? new Date(act.start_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' }) : act.year;
+                        
+                        html += `<div style="margin-bottom: 3px;">
+                                    <a href="https://intervals.icu/activities/${act.id}" target="_blank" style="text-decoration: none; color: #333; font-size: 13px;">
+                                        ${act.name} (${dateStr})
+                                    </a>
+                                 </div>`;
+                    }
+                });
+                
+                if (activeHoverLines.length > 5) {
+                    html += `<div style="font-size: 11px; color: #888; margin-top: 4px;">... and ${activeHoverLines.length - 5} more</div>`;
+                }
+                html += '</div>';
+                
+                clusterPopup.setLatLng(e.latlng).setContent(html).openOn(map);
             });
 
+            // 2. UN-HOVER
             line.on('mouseout', function () {
-                const currentConfig = getSportConfig(activity.type);
-                this.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
-                
-                // Notice we do NOT include this.closePopup() here, 
-                // allowing you time to move your mouse to click the link!
+                activeHoverLines.forEach(l => {
+                    const currentConfig = getSportConfig(l.activityData.type);
+                    l.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
+                });
+                activeHoverLines = [];
             });
+
+            // 3. MAP CLICK -> FILTER SIDEBAR
+            line.on('click', function (e) {
+                // Recalculate cluster precisely where clicked
+                const cluster = getOverlappingLines(e.latlng, 10);
+                if (cluster.length > 0) {
+                    selectedActivityIds = cluster.map(l => l.activityData.id);
+                    document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click map to clear)`;
+                    filterSidebar();
+                }
+                L.DomEvent.stopPropagation(e); // Prevents the map click from instantly clearing our selection
+            });
+      
            // NEW: Click the line to scroll the sidebar and highlight the card
             line.on('click', function () {
                 const targetCard = document.getElementById(`sidebar-item-${activity.id}`);
@@ -531,11 +601,12 @@
 
            
             
-            // Build Sidebar Item
+           // Build Sidebar Item
             const listItem = document.createElement('div');
             listItem.className = 'activity-item';
             listItem.id = `sidebar-item-${activity.id}`; 
             listItem.setAttribute('data-type', activity.type);
+            listItem.setAttribute('data-id', activity.id); // <-- NEW: Add this line!
             
             // NEW: Create a hidden search string so the browser doesn't have to read the screen
             const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
@@ -640,11 +711,11 @@
         if (showSwim) map.addLayer(window.sportGroups.Swim); else map.removeLayer(window.sportGroups.Swim);
         if (showOther) map.addLayer(window.sportGroups.Other); else map.removeLayer(window.sportGroups.Other);
 
-        const items = document.querySelectorAll('.activity-item');
+const items = document.querySelectorAll('.activity-item');
         items.forEach(item => {
-            // UPDATE: Read the hidden attribute instead of the visual text
             const text = item.getAttribute('data-search'); 
             const type = item.getAttribute('data-type');
+            const activityId = item.getAttribute('data-id'); // <-- NEW
 
             const matchesSearch = text.includes(query);
 
@@ -655,7 +726,14 @@
             else if (type.includes('Swim')) matchesType = showSwim;
             else matchesType = showOther;
 
-            if (matchesSearch && matchesType) {
+            // NEW: Check if this activity is in our map-clicked cluster
+            let matchesId = true;
+            if (selectedActivityIds !== null) {
+                matchesId = selectedActivityIds.includes(activityId);
+            }
+
+            // UPDATE: Add matchesId to the final requirement
+            if (matchesSearch && matchesType && matchesId) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
