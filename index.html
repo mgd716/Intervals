@@ -1,226 +1,402 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Personal Tracker Map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial, sans-serif; background-color: #111; }
-        #map { height: 100vh; width: 100%; position: absolute; z-index: 1; }
-        #sidebar {
-            position: absolute; top: 20px; left: 20px; background: rgba(30, 30, 30, 0.9);
-            color: white; padding: 15px; border-radius: 8px; z-index: 1000;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 160px;
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
         }
-        #year-select { width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
-        .leaflet-popup-content-wrapper { background: #222; color: #fff; border-radius: 4px; }
-        .leaflet-popup-tip { background: #222; }
+
+        #app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #map {
+            flex-grow: 1;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 350px;
+            height: 100%;
+            background: #f8f9fa;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000; /* Keeps it above the Leaflet map */
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            background: #ffffff;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #search-box, #year-select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .sport-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #444;
+        }
+
+        .sport-filters label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        #activity-list {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .activity-item:hover {
+            background: #e9ecef;
+        }
+
+        .activity-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .activity-item p {
+            margin: 0 0 5px 0;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .activity-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #222;
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #777;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
     </style>
-  <!-- Add this to your <head> section right below your Leaflet scripts -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <div id="sidebar">
-        <label style="font-weight:bold; display:block; margin-bottom:5px;">Filter by Year</label>
-        <select id="year-select" onchange="filterMapByYear()">
-            <option value="ALL">Show All Years</option>
-        </select>
-    </div>
-
+<div id="app-container">
     <div id="map"></div>
+    
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <select id="year-select" onchange="filterMapByYear()">
+                <option value="ALL">Show All Years</option>
+            </select>
+            
+            <input type="text" id="search-box" placeholder="Search activities..." onkeyup="filterSidebar()">
+            
+            <div class="sport-filters">
+                <label><input type="checkbox" id="filter-ride" value="Ride" checked onchange="filterSidebar()"> Cycling</label>
+                <label><input type="checkbox" id="filter-run" value="Run" checked onchange="filterSidebar()"> Running</label>
+                <label><input type="checkbox" id="filter-swim" value="Swim" checked onchange="filterSidebar()"> Swimming</label>
+                <label><input type="checkbox" id="filter-other" value="Other" checked onchange="filterSidebar()"> Other</label>
+            </div>
+        </div>
+        
+        <div id="activity-list"></div>
+    </div>
+</div>
 
-    <script>
-        const map = L.map('map').setView([0, 0], 2);
+<!-- Leaflet & Supabase JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        }).addTo(map);
+<script>
+    // ==========================================
+    // 1. CONFIGURATION
+    // ==========================================
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ==========================================
+    // 2. MAP SETUP
+    // ==========================================
+    const map = L.map('map').setView([42.8864, -78.8784], 10); // Defaulting near Buffalo
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-        const layers = {
-            'Runs': L.layerGroup().addTo(map),
-            'Rides': L.layerGroup().addTo(map),
-            'Hikes': L.layerGroup().addTo(map),
-            'Swims': L.layerGroup().addTo(map),
-            'Other': L.layerGroup().addTo(map),
-            'Squadrats (z14)': L.layerGroup().addTo(map),
-            'Squadratinhos (z17)': L.layerGroup() // Left off by default
-        };
+    window.sportGroups = {
+        Ride: L.featureGroup().addTo(map),
+        Run: L.featureGroup().addTo(map),
+        Swim: L.featureGroup().addTo(map),
+        Other: L.featureGroup().addTo(map)
+    };
 
-        L.control.layers(null, layers, { collapsed: false }).addTo(map);
+    let gridLayerGroup = L.featureGroup().addTo(map);
+    let runningMapLines = [];
+    const visitedTiles = new Set();
 
-        function getSportConfig(type) {
-            switch(type) {
-                case 'Run': return { color: '#ff4500', group: layers['Runs'] };
-                case 'Ride': case 'VirtualRide': return { color: '#00ced1', group: layers['Rides'] };
-                case 'Hike': case 'Walk': return { color: '#32cd32', group: layers['Hikes'] };
-                case 'Swim': return { color: '#1e90ff', group: layers['Swims'] };
-                default: return { color: '#ffffff', group: layers['Other'] };
+    function getSportConfig(type) {
+        if (type.includes('Ride') || type.includes('VirtualRide')) return { color: '#fc4c02', group: window.sportGroups.Ride }; // Strava Orange
+        if (type.includes('Run')) return { color: '#007fb6', group: window.sportGroups.Run };
+        if (type.includes('Swim')) return { color: '#00b300', group: window.sportGroups.Swim };
+        return { color: '#666666', group: window.sportGroups.Other };
+    }
+
+    // ==========================================
+    // 3. TILE GRID LOGIC
+    // ==========================================
+    function drawTileGrid() {
+        gridLayerGroup.clearLayers();
+        const bounds = map.getBounds();
+        const targetZoom = 14; 
+
+        const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
+        const sePoint = map.project(bounds.getSouthEast(), targetZoom);
+        
+        const minX = Math.floor(nwPoint.x / 256);
+        const maxX = Math.floor(sePoint.x / 256);
+        const minY = Math.floor(nwPoint.y / 256);
+        const maxY = Math.floor(sePoint.y / 256);
+
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                const tileNw = map.unproject(L.point(x * 256, y * 256), targetZoom);
+                const tileSe = map.unproject(L.point((x + 1) * 256, (y + 1) * 256), targetZoom);
+                
+                const tileKey = `${targetZoom}_${x}_${y}`;
+                const isVisited = visitedTiles.has(tileKey);
+
+                const currentStyle = { color: "#ff7800", weight: 1, fillOpacity: 0 };
+                if (isVisited) {
+                    currentStyle.fillColor = "#ff7800";
+                    currentStyle.fillOpacity = 0.4;
+                }
+                
+                L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(gridLayerGroup);
             }
         }
+    }
 
-        let rawActivitiesCache = [];
-        let runningMapLines = [];
-        const visitedTiles = new Set(); // Stores our completed squares
-let availableYears = [];
+    map.on('moveend', drawTileGrid);
 
-      // Replace your entire fetch() block and loadData() function with this:
+    // ==========================================
+    // 4. DATA LOADING & UI
+    // ==========================================
+    _supabase.from('activities').select('year').order('year', { ascending: false })
+        .then(response => {
+            if(response.error) { console.error("Year fetch error:", response.error); return; }
+            const uniqueYears = [...new Set(response.data.map(item => item.year))];
+            const dropdown = document.getElementById('year-select');
+            
+            uniqueYears.forEach(year => {
+                if (year > 0) {
+                    const opt = document.createElement('option');
+                    opt.value = year; opt.textContent = year;
+                    dropdown.appendChild(opt);
+                }
+            });
+            loadData("ALL");
+        });
 
-const _supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
-
-let runningMapLines = [];
-const visitedTiles = new Set(); 
-
-// 1. Ask the database what unique years exist to build the dropdown
-_supabase.from('activities').select('year').order('year', { ascending: false })
-    .then(response => {
-        const uniqueYears = [...new Set(response.data.map(item => item.year))];
-        const dropdown = document.getElementById('year-select');
+    async function loadData(targetYear) {
+        runningMapLines.forEach(line => line.remove());
+        runningMapLines = [];
+        visitedTiles.clear();
         
-        uniqueYears.forEach(year => {
-            if (year > 0) {
-                const opt = document.createElement('option');
-                opt.value = year; opt.textContent = year;
-                dropdown.appendChild(opt);
+        const listContainer = document.getElementById('activity-list');
+        listContainer.innerHTML = '';
+        
+        let query = _supabase.from('activities').select('*');
+        if (targetYear !== "ALL") {
+            query = query.eq('year', parseInt(targetYear));
+        }
+
+        const { data: activities, error } = await query;
+        if (error) { console.error("Database query failed:", error); return; }
+
+        const allPolylines = [];
+
+        activities.forEach(activity => {
+            if (!activity.coordinates || activity.coordinates.length === 0) return;
+
+            // Log visited tiles
+            activity.coordinates.forEach(coord => {
+                const latlng = L.latLng(coord[0], coord[1]);
+                const p14 = map.project(latlng, 14);
+                visitedTiles.add(`14_${Math.floor(p14.x / 256)}_${Math.floor(p14.y / 256)}`);
+            });
+
+            // Draw Line
+            const config = getSportConfig(activity.type);
+            const line = L.polyline(activity.coordinates, {
+                color: config.color,
+                weight: 3,
+                opacity: 0.8,
+                smoothFactor: 0
+            });
+
+            line.bindPopup(`<strong>${activity.name}</strong>`);
+            line.addTo(config.group);
+            
+            runningMapLines.push(line);
+            allPolylines.push(line);
+
+            // Calculate Sidebar Metrics
+            const raw = activity.raw_data || {};
+            const distanceMiles = raw.distance ? (raw.distance / 1609.34) : 0;
+            const distStr = distanceMiles > 0 ? distanceMiles.toFixed(2) + ' mi' : '--';
+
+            const timeSecs = raw.moving_time || raw.elapsed_time || 0;
+            const hours = Math.floor(timeSecs / 3600);
+            const mins = Math.floor((timeSecs % 3600) / 60);
+            const secs = timeSecs % 60;
+            
+            let timeStr = '--';
+            if (timeSecs > 0) {
+                timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${secs}s`;
             }
-        });
 
-        loadData("ALL");
-    });
-
-// 2. Query the database based on the dropdown selection
-async function loadData(targetYear) {
-    runningMapLines.forEach(line => line.remove());
-    runningMapLines = [];
-    visitedTiles.clear();
-    
-    let query = _supabase.from('activities').select('*');
-    
-    // If a specific year is selected, append a WHERE clause to the query
-    if (targetYear !== "ALL") {
-        query = query.eq('year', parseInt(targetYear));
-    }
-
-    const { data: activities, error } = await query;
-    
-    if (error) {
-        console.error("Database query failed:", error);
-        return;
-    }
-
-    const allPolylines = [];
-
-    activities.forEach(activity => {
-        if (!activity.coordinates || activity.coordinates.length === 0) return;
-
-        activity.coordinates.forEach(coord => {
-            const latlng = L.latLng(coord[0], coord[1]);
+            let paceStr = '--';
+            let paceLabel = 'Pace';
             
-            const p14 = map.project(latlng, 14);
-            visitedTiles.add(`14_${Math.floor(p14.x / 256)}_${Math.floor(p14.y / 256)}`);
-
-            const p17 = map.project(latlng, 17);
-            visitedTiles.add(`17_${Math.floor(p17.x / 256)}_${Math.floor(p17.y / 256)}`);
-        });
-
-        const config = getSportConfig(activity.type);
-        const line = L.polyline(activity.coordinates, {
-            color: config.color,
-            weight: 3,
-            opacity: 0.8,
-            smoothFactor: 0
-        });
-
-        line.bindPopup(`<a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="color: #4da6ff; text-decoration: none;"><strong>${activity.name}</strong></a><br><small>${activity.type} | ${activity.year}</small>`);
-        line.addTo(config.group);
-        
-        runningMapLines.push(line);
-        allPolylines.push(line);
-    });
-
-    drawTileGrid(); 
-
-    if (allPolylines.length > 0) {
-        const group = L.featureGroup(allPolylines);
-        map.fitBounds(group.getBounds(), { padding: [50, 50] });
-    }
-}
-
-function filterMapByYear() {
-    loadData(document.getElementById('year-select').value);
-}
-
-        function drawTileGrid() {
-            layers['Squadrats (z14)'].clearLayers();
-            layers['Squadratinhos (z17)'].clearLayers();
-            
-            const currentZoom = map.getZoom();
-            const bounds = map.getBounds();
-
-            // Reusable function to calculate and draw any zoom level grid
-            function drawGrid(targetZoom, layerGroup, style, minZoomVisible) {
-                // Prevent browser crashes by hiding grids when zoomed out too far
-                if (currentZoom < minZoomVisible) return;
-
-                const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
-                const sePoint = map.project(bounds.getSouthEast(), targetZoom);
-
-                const minX = Math.floor(nwPoint.x / 256);
-                const maxX = Math.floor(sePoint.x / 256);
-                const minY = Math.floor(nwPoint.y / 256);
-                const maxY = Math.floor(sePoint.y / 256);
-
-                // Hard safety limit: don't draw more than 4,000 rectangles at once
-                if ((maxX - minX) * (maxY - minY) > 4000) return;
-
-                for (let x = minX; x <= maxX; x++) {
-                    for (let y = minY; y <= maxY; y++) {
-                        const tileNw = map.unproject(L.point(x * 256, y * 256), targetZoom);
-                        const tileSe = map.unproject(L.point((x + 1) * 256, (y + 1) * 256), targetZoom);
-                        
-                        // Check if this specific tile exists in our visited list
-                        const tileKey = `${targetZoom}_${x}_${y}`;
-                        const isVisited = visitedTiles.has(tileKey);
-
-                        // Clone the base style so we don't accidentally overwrite it
-                        const currentStyle = Object.assign({}, style);
-                        
-                        if (isVisited) {
-                            currentStyle.fillColor = style.color; // Use the border color for the fill
-                            currentStyle.fillOpacity = 0.4;       // Fill it in!
-                        }
-                        
-                        L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(layerGroup);
-                    }
+            if (distanceMiles > 0 && timeSecs > 0) {
+                if (activity.type.includes('Ride') || activity.type.includes('VirtualRide')) {
+                    paceLabel = 'Speed';
+                    const mph = distanceMiles / (timeSecs / 3600);
+                    paceStr = `${mph.toFixed(1)} mph`;
+                } else if (activity.type.includes('Swim')) {
+                    const yds = raw.distance * 1.09361;
+                    const pace100 = timeSecs / (yds / 100);
+                    const pMins = Math.floor(pace100 / 60);
+                    const pSecs = Math.floor(pace100 % 60);
+                    paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /100y`;
+                } else {
+                    const paceSecs = timeSecs / distanceMiles;
+                    const pMins = Math.floor(paceSecs / 60);
+                    const pSecs = Math.floor(paceSecs % 60);
+                    paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /mi`;
                 }
             }
 
-            // Draw z14 (Squadrats) - Thick orange lines, visible when zoom >= 12
-            if (map.hasLayer(layers['Squadrats (z14)'])) {
-                drawGrid(14, layers['Squadrats (z14)'], {
-                    color: '#ff9900', 
-                    weight: 2,           
-                    fillOpacity: 0,      
-                    interactive: false   
-                }, 12);
-            }
+            // Build Sidebar Item
+            const listItem = document.createElement('div');
+            listItem.className = 'activity-item';
+            listItem.setAttribute('data-type', activity.type);
+            
+            listItem.innerHTML = `
+                <h4>${activity.name}</h4>
+                <p>${activity.type} | ${activity.year}</p>
+                <div class="activity-stats">
+                    <div class="stat-box">
+                        <span class="stat-label">Distance</span>
+                        <strong>${distStr}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Time</span>
+                        <strong>${timeStr}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">${paceLabel}</span>
+                        <strong>${paceStr}</strong>
+                    </div>
+                </div>
+            `;
 
-            // Draw z17 (Squadratinhos) - Thin grey lines, visible when zoom >= 15
-            if (map.hasLayer(layers['Squadratinhos (z17)'])) {
-                drawGrid(17, layers['Squadratinhos (z17)'], {
-                    color: '#777777', 
-                    weight: 1,           
-                    fillOpacity: 0,      
-                    interactive: false   
-                }, 15);
-            }
+            listItem.onclick = () => {
+                map.fitBounds(line.getBounds(), { padding: [50, 50] });
+                line.openPopup();
+            };
+
+            listContainer.appendChild(listItem);
+        });
+
+        drawTileGrid(); 
+
+        if (allPolylines.length > 0) {
+            const group = L.featureGroup(allPolylines);
+            map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
+    }
 
-        // Redraw when the map moves OR when a user toggles a layer in the menu
-        map.on('moveend overlayadd overlayremove', drawTileGrid);
+    // ==========================================
+    // 5. FILTERING
+    // ==========================================
+    function filterMapByYear() {
+        loadData(document.getElementById('year-select').value);
+    }
+
+    function filterSidebar() {
+        const query = document.getElementById('search-box').value.toLowerCase();
         
-        // Trigger the first draw
-        drawTileGrid();
-    </script>
+        const showRide = document.getElementById('filter-ride').checked;
+        const showRun = document.getElementById('filter-run').checked;
+        const showSwim = document.getElementById('filter-swim').checked;
+        const showOther = document.getElementById('filter-other').checked;
+
+        if (showRide) map.addLayer(window.sportGroups.Ride); else map.removeLayer(window.sportGroups.Ride);
+        if (showRun) map.addLayer(window.sportGroups.Run); else map.removeLayer(window.sportGroups.Run);
+        if (showSwim) map.addLayer(window.sportGroups.Swim); else map.removeLayer(window.sportGroups.Swim);
+        if (showOther) map.addLayer(window.sportGroups.Other); else map.removeLayer(window.sportGroups.Other);
+
+        const items = document.querySelectorAll('.activity-item');
+        items.forEach(item => {
+            const text = item.innerText.toLowerCase();
+            const type = item.getAttribute('data-type');
+
+            const matchesSearch = text.includes(query);
+
+            let matchesType = true;
+            if (type.includes('Ride') || type.includes('VirtualRide')) matchesType = showRide;
+            else if (type.includes('Run')) matchesType = showRun;
+            else if (type.includes('Swim')) matchesType = showSwim;
+            else matchesType = showOther;
+
+            if (matchesSearch && matchesType) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+</script>
+
 </body>
 </html>
