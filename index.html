@@ -43,7 +43,42 @@
             background: #ffffff;
             border-bottom: 1px solid #ddd;
         }
+        /* NEW: Filter Button Styling */
+        #filter-toggle-btn {
+            width: 100%;
+            padding: 8px 12px;
+            margin-top: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            transition: background 0.2s;
+        }
 
+        #filter-toggle-btn:hover {
+            background-color: #e9ecef;
+        }
+
+        /* UPDATE: Hide the filters by default */
+        .sport-filters {
+            display: none; /* Changed from flex */
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #444;
+        }
         #search-box, #year-select {
             width: 100%;
             padding: 8px;
@@ -123,22 +158,27 @@
 <div id="app-container">
     <div id="map"></div>
     
-    <div id="sidebar">
-        <div class="sidebar-header">
+   <div class="sidebar-header">
             <select id="year-select" onchange="filterMapByYear()">
                 <option value="ALL">Show All Years</option>
             </select>
             
             <input type="text" id="search-box" placeholder="Search activities..." onkeyup="filterSidebar()">
             
-            <div class="sport-filters">
+            <!-- NEW: The Toggle Button -->
+            <button id="filter-toggle-btn" onclick="toggleFilters()">
+                Map Filters <span id="filter-icon">▼</span>
+            </button>
+            
+            <!-- We added the ID 'filter-container' to this div -->
+            <div class="sport-filters" id="filter-container">
                 <label><input type="checkbox" id="filter-ride" value="Ride" checked onchange="filterSidebar()"> Cycling</label>
                 <label><input type="checkbox" id="filter-run" value="Run" checked onchange="filterSidebar()"> Running</label>
                 <label><input type="checkbox" id="filter-swim" value="Swim" onchange="filterSidebar()"> Swimming</label>
                 <label><input type="checkbox" id="filter-other" value="Other" onchange="filterSidebar()"> Other</label>
                 
-                <!-- NEW: Squadrats Toggles -->
-                <div style="width: 100%; height: 1px; background: #eee; margin: 5px 0;"></div>
+                <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
+                
                 <label><input type="checkbox" id="filter-squadrats" onchange="drawTileGrid()"> Squadrats (14)</label>
                 <label><input type="checkbox" id="filter-squadratinhos" onchange="drawTileGrid()"> Squadratinhos (17)</label>
             </div>
@@ -454,6 +494,19 @@
                 item.style.display = 'none';
             }
         });
+    }
+    function toggleFilters() {
+        const container = document.getElementById('filter-container');
+        const icon = document.getElementById('filter-icon');
+        
+        // If it's hidden, show it using flexbox. If it's showing, hide it.
+        if (container.style.display === 'none' || container.style.display === '') {
+            container.style.display = 'flex';
+            icon.textContent = '▲';
+        } else {
+            container.style.display = 'none';
+            icon.textContent = '▼';
+        }
     }
     function toggleTiles() {
         const showTiles = document.getElementById('filter-tiles').checked;
