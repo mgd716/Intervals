@@ -409,17 +409,47 @@
             line.sportType = activity.type; // <-- Add this tag so we can recolor it later
 
            
-            line.bindPopup(`<a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="text-decoration: none; color: #0066ff;"><strong>${activity.name}</strong></a>`);
+            // NEW: Format the date nicely (e.g., "Tue, Aug 11, 2026")
+            let dateStr = activity.year;
+            if (activity.start_date) {
+                const d = new Date(activity.start_date);
+                // "undefined" uses the browser's local timezone settings
+                dateStr = d.toLocaleDateString(undefined, { 
+                    weekday: 'short', 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
+
+            // UPDATE: Add the date beneath the link
+            line.bindPopup(
+                `<div style="text-align: center;">
+                    <a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="text-decoration: none; color: #0066ff; font-size: 14px;">
+                        <strong>${activity.name}</strong>
+                    </a>
+                    <br>
+                    <span style="font-size: 12px; color: #666;">${dateStr}</span>
+                </div>`
+            );
+            
             line.addTo(config.group);
-           // NEW: Hover over the map line to highlight it
-            line.on('mouseover', function () {
+
+            // UPDATE: Trigger popup on hover
+            line.on('mouseover', function (e) {
                 this.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
                 this.bringToFront();
+                
+                // This tells Leaflet to open the popup exactly where your mouse is pointing
+                this.openPopup(e.latlng); 
             });
 
             line.on('mouseout', function () {
                 const currentConfig = getSportConfig(activity.type);
                 this.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
+                
+                // Notice we do NOT include this.closePopup() here, 
+                // allowing you time to move your mouse to click the link!
             });
             
             runningMapLines.push(line);
