@@ -77,7 +77,8 @@ def main():
                     "type": act_type,
                     "name": act_name,
                     "year": act_year,
-                    "coordinates": coordinates
+                    "coordinates": coordinates,
+                    "raw_data": act # <--- Dumps every single field into the database
                 }).execute()
                 time.sleep(0.2) 
 
