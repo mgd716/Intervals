@@ -285,7 +285,7 @@
     let selectedActivityIds = null; 
     let activeHoverLines = [];
     let highlightedLines = []; 
-    const clusterPopup = L.popup({ autoPan: false, closeButton: false });
+    const clusterPopup = L.popup({ autoPan: false, closeButton: false, offset: [0, -15] }); // <-- Shifted up 15 pixels
 
     function clearMapHighlights() {
         highlightedLines.forEach(l => {
@@ -567,7 +567,31 @@
                 clearMapHighlights();
             });
 
-            
+            // 3. DESKTOP LINE CLICK FIX
+            line.on('click', function (e) {
+                // Calculate the cluster exactly where the mouse clicked
+                const cluster = getOverlappingLines(e.latlng, 15);
+                
+                if (cluster.length > 0) {
+                    selectedActivityIds = cluster.map(l => String(l.activityData.id));
+                    document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
+                    
+                    // Scroll sidebar to the top
+                    document.getElementById('activity-list').scrollTop = 0;
+                    
+                    // Expand the stats for all selected activities
+                    document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
+                    selectedActivityIds.forEach(id => {
+                        const card = document.getElementById(`sidebar-item-${id}`);
+                        if (card) card.querySelector('.extended-stats').style.display = 'block';
+                    });
+                    
+                    filterSidebar();
+                }
+                
+                // Stop the click from passing through to the map beneath it
+                L.DomEvent.stopPropagation(e); 
+            });
       
            // NEW: Click the line to scroll the sidebar and highlight the card
             line.on('click', function () {
