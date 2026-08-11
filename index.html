@@ -233,7 +233,7 @@
     // 2. MAP SETUP
     // ==========================================
     const map = L.map('map').setView([42.8864, -78.8784], 10); // Defaulting near Buffalo
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
     }).addTo(map);
 
@@ -411,6 +411,16 @@
            
             line.bindPopup(`<a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="text-decoration: none; color: #0066ff;"><strong>${activity.name}</strong></a>`);
             line.addTo(config.group);
+           // NEW: Hover over the map line to highlight it
+            line.on('mouseover', function () {
+                this.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                this.bringToFront();
+            });
+
+            line.on('mouseout', function () {
+                const currentConfig = getSportConfig(activity.type);
+                this.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
+            });
             
             runningMapLines.push(line);
             allPolylines.push(line);
