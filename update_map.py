@@ -35,7 +35,7 @@ def fetch_gps_stream(activity_id):
                     lats = stream.get("data", [])
                     lngs = stream.get("data2", [])
                     if lats and lngs:
-                        return [[round(lat, 5), round(lng, 5)] for lat, lng in zip(lats, lngs)][::4]
+                       return [[round(lat, 5), round(lng, 5)] for lat, lng in zip(lats, lngs) if lat is not None and lng is not None][::4]
     return None
 
 def main():
