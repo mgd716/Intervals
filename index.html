@@ -451,6 +451,32 @@
                 // Notice we do NOT include this.closePopup() here, 
                 // allowing you time to move your mouse to click the link!
             });
+           // NEW: Click the line to scroll the sidebar and highlight the card
+            line.on('click', function () {
+                const targetCard = document.getElementById(`sidebar-item-${activity.id}`);
+                
+                if (targetCard) {
+                    // 1. Smoothly scroll the sidebar until the card is in the center
+                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // 2. Collapse any currently open extended stats
+                    document.querySelectorAll('.extended-stats').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                    
+                    // 3. Expand the stats for this specific activity
+                    targetCard.querySelector('.extended-stats').style.display = 'block';
+                    
+                    // 4. Make the card flash yellow for a second so your eye catches it
+                    const originalBg = targetCard.style.background;
+                    targetCard.style.background = '#ffff99'; // Bright yellow
+                    targetCard.style.transition = 'background 0.5s'; // Smooth fade
+                    
+                    setTimeout(() => {
+                        targetCard.style.background = originalBg;
+                    }, 1500); // Fades out after 1.5 seconds
+                }
+            });
             
             runningMapLines.push(line);
             allPolylines.push(line);
@@ -500,6 +526,7 @@
             // Build Sidebar Item
             const listItem = document.createElement('div');
             listItem.className = 'activity-item';
+            listItem.id = `sidebar-item-${activity.id}`; // <-- NEW: Unique ID for the map to find
             listItem.setAttribute('data-type', activity.type);
             
             listItem.innerHTML = `
