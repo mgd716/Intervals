@@ -127,7 +127,7 @@ def main():
                     # NEW: Performance Metrics
                     "average_heartrate": act.get("average_heartrate", 0.0),
                     "max_heartrate": act.get("max_heartrate", 0.0),
-                    "average_watts": act.get("average_watts", 0.0),
+                    "average_watts": act.get("average_watts") or act.get("icu_weighted_avg_watts", 0.0),
                     "average_cadence": act.get("average_cadence", 0.0),
                     "work": act.get("work", 0.0),
                     
