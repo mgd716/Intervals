@@ -254,43 +254,14 @@
     let runningMapLines = [];
     const visitedTiles = new Set();
 
-    // NEW: Tracking variables for the clustering feature
+// ==========================================
+    // CLUSTER TRACKING & HIGHLIGHTING
+    // ==========================================
     let selectedActivityIds = null; 
     let activeHoverLines = [];
-    const clusterPopup = L.popup({ autoPan: false, closeButton: false });
-    
-    
-// NEW: Global Map Click (Handles both selecting clusters and clearing them)
-    map.on('click', function(e) {
-        // Run the math to find every line within 15 pixels of your mouse click
-        const cluster = getOverlappingLines(e.latlng, 15);
-        
-        if (cluster.length > 0) {
-            // WE CLICKED A ROUTE: Filter the sidebar
-            selectedActivityIds = cluster.map(l => String(l.activityData.id));
-            document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
-            
-            // Scroll sidebar to the top
-            document.getElementById('activity-list').scrollTop = 0;
-            
-            // Expand the stats for all selected activities
-            document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
-            selectedActivityIds.forEach(id => {
-                const card = document.getElementById(`sidebar-item-${id}`);
-                if (card) card.querySelector('.extended-stats').style.display = 'block';
-            });
-            
-        } else {
-            // WE CLICKED EMPTY SPACE: Clear the filter
-            selectedActivityIds = null;
-            document.getElementById('search-box').placeholder = "Search activities...";
-        }
-        // NEW: Tracking variables for the clustering feature
-    let selectedActivityIds = null; 
-    let highlightedLines = []; // <-- NEW
+    let highlightedLines = []; 
     const clusterPopup = L.popup({ autoPan: false, closeButton: false });
 
-    // NEW: Bulletproof cleanup function
     function clearMapHighlights() {
         highlightedLines.forEach(l => {
             if (l.activityData) {
@@ -298,10 +269,33 @@
                 l.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
             }
         });
-        highlightedLines = []; // Reset the array so it's empty
+        highlightedLines = []; 
     }
+
+    // NEW: Global Map Click (Handles both selecting clusters and clearing them)
+    map.on('click', function(e) {
+        const cluster = getOverlappingLines(e.latlng, 15);
+        
+        if (cluster.length > 0) {
+            selectedActivityIds = cluster.map(l => String(l.activityData.id));
+            document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
+            
+            document.getElementById('activity-list').scrollTop = 0;
+            
+            document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
+            selectedActivityIds.forEach(id => {
+                const card = document.getElementById(`sidebar-item-${id}`);
+                if (card) card.querySelector('.extended-stats').style.display = 'block';
+            });
+            
+        } else {
+            selectedActivityIds = null;
+            document.getElementById('search-box').placeholder = "Search activities...";
+        }
         filterSidebar();
     });
+
+    
     function getSportConfig(type) {
         if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
         if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
@@ -759,26 +753,12 @@
             else if (type.includes('Swim')) matchesType = showSwim;
             else matchesType = showOther;
 
-            if (matchesSearch && matchesType) {
+    if (matchesSearch && matchesType) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }
-        });
-
-            // NEW: Check if this activity is in our map-clicked cluster
-            let matchesId = true;
-            if (selectedActivityIds !== null) {
-                matchesId = selectedActivityIds.includes(activityId);
-            }
-
-            // UPDATE: Add matchesId to the final requirement
-            if (matchesSearch && matchesType && matchesId) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
+        }); // <-- This correctly closes the items.forEach loop!
     }
     function toggleFilters() {
         const container = document.getElementById('filter-container');
