@@ -1,6 +1,7 @@
 import os
 import requests
 import time
+import math
 from requests.auth import HTTPBasicAuth
 from supabase import create_client, Client
 
@@ -37,7 +38,15 @@ def fetch_gps_stream(activity_id):
                     if lats and lngs:
                        return [[round(lat, 5), round(lng, 5)] for lat, lng in zip(lats, lngs) if lat is not None and lng is not None][::4]
     return None
-
+    
+def get_tile(lat, lon, zoom):
+    """Converts Latitude/Longitude to standard map tile X/Y coordinates"""
+    lat_rad = math.radians(lat)
+    n = 2.0 ** zoom
+    xtile = int((lon + 180.0) / 360.0 * n)
+    ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+    return f"{zoom}_{xtile}_{ytile}"
+    
 def main():
     # --- Debugging Block ---
     print("--- Credential Check ---")
@@ -83,15 +92,24 @@ def main():
             
             if coordinates:
                 new_downloads += 1
+                
+                # Calculate unique tiles for this specific activity
+                activity_tiles = set()
+                for lat, lng in coordinates:
+                    activity_tiles.add(get_tile(lat, lng, 14)) # Squadrat
+                    activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
+                
+                # Insert everything into Supabase
                 supabase.table("activities").insert({
                     "id": act_id,
                     "type": act_type,
                     "name": act_name,
                     "year": act_year,
                     "coordinates": coordinates,
-                    "raw_data": act 
+                    "raw_data": act,
+                    "visited_tiles": list(activity_tiles) # Save the calculated list!
                 }).execute()
-                time.sleep(0.2) 
+                time.sleep(0.2)
 
         print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
         
