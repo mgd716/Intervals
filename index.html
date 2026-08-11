@@ -534,8 +534,12 @@
             // Build Sidebar Item
             const listItem = document.createElement('div');
             listItem.className = 'activity-item';
-            listItem.id = `sidebar-item-${activity.id}`; // <-- NEW: Unique ID for the map to find
+            listItem.id = `sidebar-item-${activity.id}`; 
             listItem.setAttribute('data-type', activity.type);
+            
+            // NEW: Create a hidden search string so the browser doesn't have to read the screen
+            const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
+            listItem.setAttribute('data-search', searchString);
             
             listItem.innerHTML = `
                 <h4>${activity.name}</h4>
@@ -638,7 +642,8 @@
 
         const items = document.querySelectorAll('.activity-item');
         items.forEach(item => {
-            const text = item.innerText.toLowerCase();
+            // UPDATE: Read the hidden attribute instead of the visual text
+            const text = item.getAttribute('data-search'); 
             const type = item.getAttribute('data-type');
 
             const matchesSearch = text.includes(query);
