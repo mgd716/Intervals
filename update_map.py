@@ -115,9 +115,13 @@ def main():
                     "type": act_type,
                     "name": act_name,
                     "year": act_year,
+                    "start_date": act.get("start_date_local", ""), # Grabs the ISO date string
+                    "distance": act.get("distance", 0.0),
+                    "moving_time": act.get("moving_time", 0),
+                    "tss": act.get("tss", 0.0),
                     "coordinates": coordinates,
                     "raw_data": act,
-                    "visited_tiles": list(activity_tiles) # Save the calculated list!
+                    "visited_tiles": list(activity_tiles) 
                 }).execute()
                 time.sleep(0.2)
 
