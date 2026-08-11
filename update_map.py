@@ -109,19 +109,23 @@ def main():
                     activity_tiles.add(get_tile(lat, lng, 14)) # Squadrat
                     activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
                 
-                # Insert everything into Supabase
+               # Use UPSERT to save the data and the new metrics
                 supabase.table("activities").upsert({
                     "id": act_id,
                     "type": act_type,
                     "name": act_name,
                     "year": act_year,
-                    "start_date": act.get("start_date_local", ""), # Grabs the ISO date string
+                    "start_date": act.get("start_date_local", ""),
                     "distance": act.get("distance", 0.0),
                     "moving_time": act.get("moving_time", 0),
+                    "elapsed_time": act.get("elapsed_time", 0),
+                    "calories": act.get("calories", 0),
+                    "total_elevation_gain": act.get("total_elevation_gain", 0.0),
+                    "max_elevation": act.get("elev_high", 0.0), # The API uses 'elev_high'
                     "tss": act.get("tss", 0.0),
                     "coordinates": coordinates,
                     "raw_data": act,
-                    "visited_tiles": list(activity_tiles) 
+                    "visited_tiles": list(activity_tiles)
                 }).execute()
                 time.sleep(0.2)
 
