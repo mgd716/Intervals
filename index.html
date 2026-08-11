@@ -515,6 +515,20 @@
                 // Expand the stats for this specific activity
                 listItem.querySelector('.extended-stats').style.display = 'block';
             };
+           // NEW: Hover to highlight on map
+            listItem.addEventListener('mouseenter', () => {
+                // Change to bright yellow, make it fully opaque, and slightly thicker
+                line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                
+                // Bring it to the top so it isn't buried under your dense heatmap layers
+                line.bringToFront(); 
+            });
+
+            listItem.addEventListener('mouseleave', () => {
+                // Revert to whatever the current color picker is set to, and restore heatmap opacity
+                const currentConfig = getSportConfig(activity.type);
+                line.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
+            });
             listContainer.appendChild(listItem);
         });
 
