@@ -418,6 +418,9 @@
             const hours = Math.floor(timeSecs / 3600);
             const mins = Math.floor((timeSecs % 3600) / 60);
             const secs = timeSecs % 60;
+            const hr = activity.average_heartrate > 0 ? Math.round(activity.average_heartrate) + ' bpm' : '--';
+            const power = activity.average_watts > 0 ? Math.round(activity.average_watts) + ' w' : '--';
+            const elev = activity.total_elevation_gain > 0 ? Math.round(activity.total_elevation_gain * 3.28084) + ' ft' : '--';
             
             let timeStr = '--';
             if (timeSecs > 0) {
@@ -451,9 +454,16 @@
             listItem.className = 'activity-item';
             listItem.setAttribute('data-type', activity.type);
             
+            // Build Sidebar Item
+            const listItem = document.createElement('div');
+            listItem.className = 'activity-item';
+            listItem.setAttribute('data-type', activity.type);
+            
             listItem.innerHTML = `
                 <h4>${activity.name}</h4>
-                <p>${activity.type} | ${activity.year}</p>
+                <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${activity.type} | ${activity.year}</p>
+                
+                <!-- Primary Stats (Always visible) -->
                 <div class="activity-stats">
                     <div class="stat-box">
                         <span class="stat-label">Distance</span>
@@ -468,13 +478,40 @@
                         <strong>${paceStr}</strong>
                     </div>
                 </div>
+
+                <!-- NEW: Extended Stats (Hidden by default) -->
+                <div class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
+                    <div class="activity-stats">
+                        <div class="stat-box">
+                            <span class="stat-label">Avg HR</span>
+                            <strong>${hr}</strong>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Avg Power</span>
+                            <strong>${power}</strong>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Elevation</span>
+                            <strong>${elev}</strong>
+                        </div>
+                    </div>
+                </div>
             `;
 
+            // Click to zoom map AND expand stats
             listItem.onclick = () => {
+                // Fly to the map location
                 map.fitBounds(line.getBounds(), { padding: [50, 50] });
                 line.openPopup();
+                
+                // Collapse any previously opened extended stats
+                document.querySelectorAll('.extended-stats').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Expand the stats for this specific activity
+                listItem.querySelector('.extended-stats').style.display = 'block';
             };
-
             listContainer.appendChild(listItem);
         });
 
