@@ -136,6 +136,10 @@
                 <label><input type="checkbox" id="filter-run" value="Run" checked onchange="filterSidebar()"> Running</label>
                 <label><input type="checkbox" id="filter-swim" value="Swim" checked onchange="filterSidebar()"> Swimming</label>
                 <label><input type="checkbox" id="filter-other" value="Other" checked onchange="filterSidebar()"> Other</label>
+                
+                <!-- NEW: Squadrats Toggle -->
+                <div style="width: 100%; height: 1px; background: #eee; margin: 5px 0;"></div>
+                <label><input type="checkbox" id="filter-tiles" checked onchange="toggleTiles()"> Show Squadrats</label>
             </div>
         </div>
         
@@ -402,6 +406,15 @@
                 item.style.display = 'none';
             }
         });
+    }
+    function toggleTiles() {
+        const showTiles = document.getElementById('filter-tiles').checked;
+        
+        if (showTiles) {
+            map.addLayer(gridLayerGroup);
+        } else {
+            map.removeLayer(gridLayerGroup);
+        }
     }
 </script>
 
