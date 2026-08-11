@@ -185,9 +185,7 @@
         return { color: '#666666', group: window.sportGroups.Other };
     }
 
-    // ==========================================
-    // 3. TILE GRID LOGIC
-    // ==========================================
+
     // ==========================================
     // 3. TILE GRID LOGIC
     // ==========================================
@@ -248,25 +246,45 @@
 
     map.on('moveend', drawTileGrid);
 
+
     // ==========================================
     // 4. DATA LOADING & UI
     // ==========================================
-    _supabase.from('activities').select('year').order('year', { ascending: false })
-        .then(response => {
-            if(response.error) { console.error("Year fetch error:", response.error); return; }
-            const uniqueYears = [...new Set(response.data.map(item => item.year))];
-            const dropdown = document.getElementById('year-select');
-            
-            uniqueYears.forEach(year => {
-                if (year > 0) {
-                    const opt = document.createElement('option');
-                    opt.value = year; opt.textContent = year;
-                    dropdown.appendChild(opt);
-                }
-            });
-            loadData("ALL");
-        });
+    
+    // 1. Safely load ALL years for the dropdown by paginating
+    async function initDropdown() {
+        let allYears = [];
+        let start = 0;
+        const chunkSize = 1000;
 
+        while (true) {
+            const { data, error } = await _supabase.from('activities').select('year').range(start, start + chunkSize - 1);
+            if (error || !data || data.length === 0) break;
+            
+            allYears.push(...data.map(item => item.year));
+            if (data.length < chunkSize) break;
+            start += chunkSize;
+        }
+
+        // Remove duplicates and sort newest to oldest
+        const uniqueYears = [...new Set(allYears)].sort((a, b) => b - a);
+        const dropdown = document.getElementById('year-select');
+        
+        uniqueYears.forEach(year => {
+            if (year > 0) {
+                const opt = document.createElement('option');
+                opt.value = year; opt.textContent = year;
+                dropdown.appendChild(opt);
+            }
+        });
+        
+        // Trigger the initial map load
+        loadData("ALL");
+    }
+    
+    initDropdown(); // Kick off the process when the page loads
+
+    // 2. Safely load ALL map data by paginating
     async function loadData(targetYear) {
         runningMapLines.forEach(line => line.remove());
         runningMapLines = [];
@@ -275,32 +293,36 @@
         const listContainer = document.getElementById('activity-list');
         listContainer.innerHTML = '';
         
-        let query = _supabase.from('activities').select('*');
-        if (targetYear !== "ALL") {
-            query = query.eq('year', parseInt(targetYear));
-        }
+        let activities = [];
+        let start = 0;
+        const chunkSize = 1000;
 
-        const { data: activities, error } = await query;
-        if (error) { console.error("Database query failed:", error); return; }
+        // Loop until every row is downloaded
+        while (true) {
+            let query = _supabase.from('activities').select('*').range(start, start + chunkSize - 1);
+            if (targetYear !== "ALL") {
+                query = query.eq('year', parseInt(targetYear));
+            }
+
+            const { data, error } = await query;
+            if (error) { console.error("Database query failed:", error); break; }
+            if (!data || data.length === 0) break;
+
+            activities.push(...data);
+            
+            if (data.length < chunkSize) break;
+            start += chunkSize;
+        }
 
         const allPolylines = [];
 
-       activities.forEach(activity => {
+        activities.forEach(activity => {
             if (!activity.coordinates || activity.coordinates.length === 0) return;
 
-            // NEW: Instantly load pre-calculated tiles from the database
+            // Load pre-calculated tiles from the database
             if (activity.visited_tiles) {
                 activity.visited_tiles.forEach(tile => visitedTiles.add(tile));
             }
-
-            // ... [The rest of your line drawing and sidebar code stays exactly the same!] ...
-
-            // Log visited tiles
-            activity.coordinates.forEach(coord => {
-                const latlng = L.latLng(coord[0], coord[1]);
-                const p14 = map.project(latlng, 14);
-                visitedTiles.add(`14_${Math.floor(p14.x / 256)}_${Math.floor(p14.y / 256)}`);
-            });
 
             // Draw Line
             const config = getSportConfig(activity.type);
@@ -311,7 +333,7 @@
                 smoothFactor: 0
             });
 
-            line.bindPopup(`<strong>${activity.name}</strong>`);
+            line.bindPopup(`<a href="https://intervals.icu/activities/${activity.id}" target="_blank" style="text-decoration: none; color: #0066ff;"><strong>${activity.name}</strong></a>`);
             line.addTo(config.group);
             
             runningMapLines.push(line);
@@ -393,7 +415,6 @@
             map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
     }
-
     // ==========================================
     // 5. FILTERING
     // ==========================================
