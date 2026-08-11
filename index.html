@@ -194,12 +194,12 @@
                 <div class="filter-row">
                     <input type="checkbox" id="filter-pavement" value="Pavement" onchange="filterSidebar()">
                     <input type="color" id="color-pavement" value="#007fb6" onchange="updateSportColor('Pavement', this.value)">
-                    <label for="filter-pavement">Pavement Foot</label>
+                    <label for="filter-pavement">Pavement</label>
                 </div>
                 <div class="filter-row">
                     <input type="checkbox" id="filter-dirt" value="Dirt" onchange="filterSidebar()">
                     <input type="color" id="color-dirt" value="#8b4513" onchange="updateSportColor('Dirt', this.value)">
-                    <label for="filter-dirt">Dirt Foot</label>
+                    <label for="filter-dirt">Dirt</label>
                 </div>
                 <div class="filter-row">
                     <input type="checkbox" id="filter-swim" value="Swim" onchange="filterSidebar()">
@@ -242,12 +242,12 @@
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
     }).addTo(map);
 
-    window.sportGroups = {
-        Cycling: L.featureGroup().addTo(map),
-        Pavement: L.featureGroup().addTo(map),
-        Dirt: L.featureGroup().addTo(map),
-        Swim: L.featureGroup().addTo(map),
-        Other: L.featureGroup().addTo(map)
+   window.sportGroups = {
+        Cycling: L.featureGroup().addTo(map), // <-- Only Cycling loads on the map by default
+        Pavement: L.featureGroup(),
+        Dirt: L.featureGroup(),
+        Swim: L.featureGroup(),
+        Other: L.featureGroup()
     };
 
     let gridLayerGroup = L.featureGroup().addTo(map);
@@ -703,6 +703,8 @@
             const group = L.featureGroup(allPolylines);
             map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
+    // NEW: Force the sidebar to hide unchecked sports the moment the page loads
+        filterSidebar();
     }
     // ==========================================
     // 5. FILTERING
