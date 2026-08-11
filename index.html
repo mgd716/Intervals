@@ -265,11 +265,12 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // UPDATE: Added the 'ghost-popup' class
+   // UPDATE: Combined the 'ghost-popup' class and the correct offset!
     const clusterPopup = L.popup({ 
         autoPan: false, 
         closeButton: false, 
         className: 'ghost-popup',
-        offset: [0, -5] 
+        offset: [0, -15] 
     });
     // ==========================================
     // 2. MAP SETUP
@@ -297,7 +298,6 @@
     let selectedActivityIds = null; 
     let activeHoverLines = [];
     let highlightedLines = []; 
-    const clusterPopup = L.popup({ autoPan: false, closeButton: false, offset: [0, -15] }); // <-- Shifted up 15 pixels
 
     function clearMapHighlights() {
         highlightedLines.forEach(l => {
@@ -605,10 +605,7 @@
                 L.DomEvent.stopPropagation(e); 
             });
       
-           // NEW: Click the line to scroll the sidebar and highlight the card
-            line.on('click', function () {
-                const targetCard = document.getElementById(`sidebar-item-${activity.id}`);
-                
+                         
                 if (targetCard) {
                     // 1. Smoothly scroll the sidebar until the card is in the center
                     targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -736,7 +733,6 @@
             listItem.onclick = () => {
                 // Fly to the map location
                 map.fitBounds(line.getBounds(), { padding: [50, 50] });
-                line.openPopup();
                 
                 // Collapse any previously opened extended stats
                 document.querySelectorAll('.extended-stats').forEach(el => {
@@ -758,7 +754,7 @@
             listItem.addEventListener('mouseleave', () => {
                 // Revert to whatever the current color picker is set to, and restore heatmap opacity
                 const currentConfig = getSportConfig(activity.type);
-                line.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.15 });
+                line.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.3 });
             });
             listContainer.appendChild(listItem);
         });
