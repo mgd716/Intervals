@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
+        /* THE GHOST HACK: Forces the mouse to pass straight through the popup */
+        .ghost-popup {
+            pointer-events: none !important;
+        }
         body, html {
             margin: 0;
             padding: 0;
@@ -259,6 +263,14 @@
     const SUPABASE_URL = 'https://tmtqyawzmmjfydxoymry.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_cMso9XTCykk7W2BYWxAGPw_xzxHCufa';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // UPDATE: Added the 'ghost-popup' class
+    const clusterPopup = L.popup({ 
+        autoPan: false, 
+        closeButton: false, 
+        className: 'ghost-popup',
+        offset: [0, -5] 
+    });
     // ==========================================
     // 2. MAP SETUP
     // ==========================================
@@ -676,8 +688,13 @@
             const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
             listItem.setAttribute('data-search', searchString);
             
-            listItem.innerHTML = `
-                <h4>${activity.name}</h4>
+           listItem.innerHTML = `
+                <!-- UPDATE: Title is now a direct link to Intervals -->
+                <h4 style="margin: 0 0 5px 0;">
+                    <a href="https://intervals.icu/activities/${activity.id}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
+                        ${activity.name} ↗
+                    </a>
+                </h4>
                 <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${activity.type} | ${activity.year}</p>
                 
                 <!-- Primary Stats (Always visible) -->
@@ -696,7 +713,7 @@
                     </div>
                 </div>
 
-                <!-- NEW: Extended Stats (Hidden by default) -->
+                <!-- Extended Stats (Hidden by default) -->
                 <div class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
                     <div class="activity-stats">
                         <div class="stat-box">
