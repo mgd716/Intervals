@@ -187,14 +187,19 @@
             
             <div class="sport-filters" id="filter-container">
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-ride" value="Ride" checked onchange="filterSidebar()">
-                    <input type="color" id="color-ride" value="#fc4c02" onchange="updateSportColor('Ride', this.value)">
-                    <label for="filter-ride">Cycling</label>
+                    <input type="checkbox" id="filter-cycling" value="Cycling" checked onchange="filterSidebar()">
+                    <input type="color" id="color-cycling" value="#fc4c02" onchange="updateSportColor('Cycling', this.value)">
+                    <label for="filter-cycling">Cycling</label>
                 </div>
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-run" value="Run" checked onchange="filterSidebar()">
-                    <input type="color" id="color-run" value="#007fb6" onchange="updateSportColor('Run', this.value)">
-                    <label for="filter-run">Running</label>
+                    <input type="checkbox" id="filter-pavement" value="Pavement" onchange="filterSidebar()">
+                    <input type="color" id="color-pavement" value="#007fb6" onchange="updateSportColor('Pavement', this.value)">
+                    <label for="filter-pavement">Pavement Foot</label>
+                </div>
+                <div class="filter-row">
+                    <input type="checkbox" id="filter-dirt" value="Dirt" onchange="filterSidebar()">
+                    <input type="color" id="color-dirt" value="#8b4513" onchange="updateSportColor('Dirt', this.value)">
+                    <label for="filter-dirt">Dirt Foot</label>
                 </div>
                 <div class="filter-row">
                     <input type="checkbox" id="filter-swim" value="Swim" onchange="filterSidebar()">
@@ -238,8 +243,9 @@
     }).addTo(map);
 
     window.sportGroups = {
-        Ride: L.featureGroup().addTo(map),
-        Run: L.featureGroup().addTo(map),
+        Cycling: L.featureGroup().addTo(map),
+        Pavement: L.featureGroup().addTo(map),
+        Dirt: L.featureGroup().addTo(map),
         Swim: L.featureGroup().addTo(map),
         Other: L.featureGroup().addTo(map)
     };
@@ -249,9 +255,11 @@
     const visitedTiles = new Set();
 
     function getSportConfig(type) {
-        if (type.includes('Ride') || type.includes('VirtualRide')) return { color: document.getElementById('color-ride').value, group: window.sportGroups.Ride };
-        if (type.includes('Run')) return { color: document.getElementById('color-run').value, group: window.sportGroups.Run };
+        if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
+        if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
+        if (type === 'Hike' || type === 'TrailRun') return { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt };
         if (type.includes('Swim')) return { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim };
+        
         return { color: document.getElementById('color-other').value, group: window.sportGroups.Other };
     }
 
@@ -616,13 +624,15 @@
     function filterSidebar() {
         const query = document.getElementById('search-box').value.toLowerCase();
         
-        const showRide = document.getElementById('filter-ride').checked;
-        const showRun = document.getElementById('filter-run').checked;
+        const showCycling = document.getElementById('filter-cycling').checked;
+        const showPavement = document.getElementById('filter-pavement').checked;
+        const showDirt = document.getElementById('filter-dirt').checked;
         const showSwim = document.getElementById('filter-swim').checked;
         const showOther = document.getElementById('filter-other').checked;
 
-        if (showRide) map.addLayer(window.sportGroups.Ride); else map.removeLayer(window.sportGroups.Ride);
-        if (showRun) map.addLayer(window.sportGroups.Run); else map.removeLayer(window.sportGroups.Run);
+        if (showCycling) map.addLayer(window.sportGroups.Cycling); else map.removeLayer(window.sportGroups.Cycling);
+        if (showPavement) map.addLayer(window.sportGroups.Pavement); else map.removeLayer(window.sportGroups.Pavement);
+        if (showDirt) map.addLayer(window.sportGroups.Dirt); else map.removeLayer(window.sportGroups.Dirt);
         if (showSwim) map.addLayer(window.sportGroups.Swim); else map.removeLayer(window.sportGroups.Swim);
         if (showOther) map.addLayer(window.sportGroups.Other); else map.removeLayer(window.sportGroups.Other);
 
@@ -633,9 +643,10 @@
 
             const matchesSearch = text.includes(query);
 
-            let matchesType = true;
-            if (type.includes('Ride') || type.includes('VirtualRide')) matchesType = showRide;
-            else if (type.includes('Run')) matchesType = showRun;
+            let matchesType = false;
+            if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
+            else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
+            else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
             else if (type.includes('Swim')) matchesType = showSwim;
             else matchesType = showOther;
 
@@ -671,11 +682,13 @@
     function updateSportColor(baseType, newColor) {
         runningMapLines.forEach(line => {
             let match = false;
+            const t = line.sportType;
             
-            if (baseType === 'Ride' && (line.sportType.includes('Ride') || line.sportType.includes('VirtualRide'))) match = true;
-            else if (baseType === 'Run' && line.sportType.includes('Run')) match = true;
-            else if (baseType === 'Swim' && line.sportType.includes('Swim')) match = true;
-            else if (baseType === 'Other' && !line.sportType.includes('Ride') && !line.sportType.includes('VirtualRide') && !line.sportType.includes('Run') && !line.sportType.includes('Swim')) match = true;
+            if (baseType === 'Cycling' && (t.includes('Ride') || t.includes('VirtualRide') || t.includes('EBike'))) match = true;
+            else if (baseType === 'Pavement' && (t === 'Run' || t === 'Walk')) match = true;
+            else if (baseType === 'Dirt' && (t === 'Hike' || t === 'TrailRun')) match = true;
+            else if (baseType === 'Swim' && t.includes('Swim')) match = true;
+            else if (baseType === 'Other' && !t.includes('Ride') && !t.includes('VirtualRide') && !t.includes('EBike') && t !== 'Run' && t !== 'Walk' && t !== 'Hike' && t !== 'TrailRun' && !t.includes('Swim')) match = true;
             
             if (match) {
                 // Leaflet's built-in setStyle lets us change colors without redrawing the map!
