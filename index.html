@@ -519,14 +519,27 @@
 
             // 3. MAP CLICK -> FILTER SIDEBAR
             line.on('click', function (e) {
-                // Recalculate cluster precisely where clicked
-                const cluster = getOverlappingLines(e.latlng, 10);
-                if (cluster.length > 0) {
-                    selectedActivityIds = cluster.map(l => l.activityData.id);
-                    document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click map to clear)`;
+                // Since you are already hovering, we just recycle the active cluster!
+                if (activeHoverLines.length > 0) {
+                    // Force IDs to strings to guarantee a perfect match
+                    selectedActivityIds = activeHoverLines.map(l => String(l.activityData.id));
+                    
+                    document.getElementById('search-box').placeholder = `Filtered to ${activeHoverLines.length} activities (Click map to clear)`;
                     filterSidebar();
+                    
+                    // Scroll sidebar to the top to see the filtered results
+                    document.getElementById('activity-list').scrollTop = 0;
+                    
+                    // Automatically expand the stats for all activities in this cluster
+                    document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
+                    activeHoverLines.forEach(l => {
+                        const card = document.getElementById(`sidebar-item-${l.activityData.id}`);
+                        if (card) {
+                            card.querySelector('.extended-stats').style.display = 'block';
+                        }
+                    });
                 }
-                L.DomEvent.stopPropagation(e); // Prevents the map click from instantly clearing our selection
+                L.DomEvent.stopPropagation(e);
             });
       
            // NEW: Click the line to scroll the sidebar and highlight the card
@@ -601,12 +614,12 @@
 
            
             
-           // Build Sidebar Item
+          // Build Sidebar Item
             const listItem = document.createElement('div');
             listItem.className = 'activity-item';
             listItem.id = `sidebar-item-${activity.id}`; 
             listItem.setAttribute('data-type', activity.type);
-            listItem.setAttribute('data-id', activity.id); // <-- NEW: Add this line!
+            listItem.setAttribute('data-id', String(activity.id)); // <-- UPDATE: Force String
             
             // NEW: Create a hidden search string so the browser doesn't have to read the screen
             const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
@@ -715,7 +728,7 @@ const items = document.querySelectorAll('.activity-item');
         items.forEach(item => {
             const text = item.getAttribute('data-search'); 
             const type = item.getAttribute('data-type');
-            const activityId = item.getAttribute('data-id'); // <-- NEW
+            const activityId = String(item.getAttribute('data-id')); // <-- UPDATE: Force String
 
             const matchesSearch = text.includes(query);
 
