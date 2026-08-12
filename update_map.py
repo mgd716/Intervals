@@ -178,7 +178,8 @@ def main():
 
         print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
 
-    
+    # --- Step Sync ---
+        sync_steps_to_supabase(supabase, days_back=1400)
 
 
         
