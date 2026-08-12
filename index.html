@@ -199,7 +199,7 @@
                 <option value="ALL">Show All Years</option>
             </select>
             
-            <input type="text" id="search-box" placeholder="Search activities..." onkeyup="filterSidebar()">
+            <input type="text" id="search-box" placeholder="Search activities..." onkeyup="debouncedFilterSidebar()">
             
             <button id="filter-toggle-btn" onclick="toggleFilters()">
                 Map Filters <span id="filter-icon">▼</span>
@@ -754,6 +754,17 @@
     // ==========================================
     // 5. FILTERING
     // ==========================================
+    // Debounce utility to prevent UI blocking on every keystroke
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    const debouncedFilterSidebar = debounce(filterSidebar, 300);
+
     function filterMapByYear() {
         loadData(document.getElementById('year-select').value);
     }
