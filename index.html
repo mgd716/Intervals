@@ -950,13 +950,14 @@
         // Re-append sorted items to the container
         items.forEach(item => listContainer.appendChild(item));
 
-        // Ensure the SVG arrow icon rotates to point up when ascending
+        // Ensure the SVG arrow icon rotates to reflect the direction
+        // By default (descending), the user wants the icon pointing down (scaleY(-1))
+        // When ascending, it returns to normal (none).
         const btn = document.getElementById('sort-dir-btn');
         if (btn) {
             const svg = btn.querySelector('svg');
             if (svg) {
-                svg.style.transform = isSortAscending ? 'scaleY(-1)' : 'none';
-                svg.style.transition = 'transform 0.2s';
+                svg.style.transform = isSortAscending ? 'none' : 'scaleY(-1)';
             }
         }
     }
