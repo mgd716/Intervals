@@ -668,6 +668,8 @@
         });
         // =========================================================
 
+        drawTileGrid();
+
         if (runningMapLines.length > 0) {
             const group = L.featureGroup(runningMapLines);
             map.fitBounds(group.getBounds(), { padding: [50, 50] });
@@ -898,8 +900,6 @@
         });
 
         listContainer.appendChild(fragment);
-
-        drawTileGrid(); 
     }
 
     // Initial Load
