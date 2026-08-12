@@ -454,20 +454,6 @@
         return `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" ${style}><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
     }
 
-    //Calls an icon from FontAwesome next to the activity in the sidebar
-    function getSportIcon(type) {
-        if (type.includes('VirtualRide')) return '<i class="fa-solid fa-laptop-code" style="color: #666;"></i> <i class="fa-solid fa-person-biking"></i>'; // Virtual Cycling
-        if (type.includes('Ride') || type.includes('EBike')) return '<i class="fa-solid fa-person-biking"></i>'; // Outdoor Cycling
-        if (type === 'Run') return '<i class="fa-solid fa-person-running"></i>'; // Running
-        if (type === 'Walk') return '<i class="fa-solid fa-person-walking"></i>'; // Walking
-        if (type === 'Hike' || type === 'TrailRun') return '<i class="fa-solid fa-person-hiking"></i>'; // Hiking
-        if (type.includes('Swim')) return '<i class="fa-solid fa-person-swimming"></i>'; // Swimming
-        if (type.includes('Ski') || type.includes('Snow')) return '<i class="fa-solid fa-person-skiing"></i>'; // Winter Sports
-        if (type.includes('Row') || type.includes('Water')) return '<i class="fa-solid fa-person-rowing"></i>'; // Water Sports
-        
-        return '<i class="fa-solid fa-medal"></i>'; // Default fallback
-    }
-
     // ==========================================
     // 3. TILE GRID LOGIC
     // ==========================================
