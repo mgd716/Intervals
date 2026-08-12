@@ -200,13 +200,39 @@
             text-transform: uppercase;
             margin-bottom: 2px;
         }
-
-        /* Consistent sizing and alignment for SVG sport icons in the sidebar list */
+    /* Consistent sizing and alignment for SVG sport icons in the sidebar list */
         .sport-icon {
             width: 1em;
             height: 1em;
             vertical-align: middle;
             display: inline-block;
+        }
+        /* Start and End Markers */
+        .start-marker {
+            background-color: #00ff00;
+            border: 2px solid black;
+            border-radius: 50%;
+            width: 12px !important;
+            height: 12px !important;
+            margin-left: -6px !important;
+            margin-top: -6px !important;
+            box-sizing: border-box;
+        }
+
+        .end-marker {
+            background-color: white;
+            background-image:
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black),
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black);
+            background-size: 6px 6px;
+            background-position: 0 0, 3px 3px;
+            border: 2px solid black;
+            border-radius: 50%;
+            width: 14px !important;
+            height: 14px !important;
+            margin-left: -7px !important;
+            margin-top: -7px !important;
+            box-sizing: border-box;
         }
 
         /* ==========================================
@@ -399,6 +425,21 @@
     let selectedActivityIds = null; 
     let highlightedLines = []; 
 
+    // State variables for start and end markers
+    let currentStartMarker = null;
+    let currentEndMarker = null;
+
+    function clearStartEndMarkers() {
+        if (currentStartMarker) {
+            map.removeLayer(currentStartMarker);
+            currentStartMarker = null;
+        }
+        if (currentEndMarker) {
+            map.removeLayer(currentEndMarker);
+            currentEndMarker = null;
+        }
+    }
+
    // Resets the map styling for any lines that were currently highlighted
    function clearMapHighlights() {
         const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
@@ -426,6 +467,8 @@
         // Find lines within a short pixel distance from the click
         const cluster = getOverlappingLines(e.latlng, 15);
         
+        clearStartEndMarkers();
+
         if (cluster.length > 0) {
             // Isolate map to show only clicked activities
             selectedActivityIds = cluster.map(l => String(l.activityData.id));
@@ -760,6 +803,8 @@
             line.on('click', function (e) {
                 const cluster = getOverlappingLines(e.latlng, 15);
                 
+                clearStartEndMarkers();
+
                 if (cluster.length > 0) {
                     selectedActivityIds = cluster.map(l => String(l.activityData.id));
                     document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
@@ -880,6 +925,8 @@
 
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
+                clearStartEndMarkers();
+
                 map.fitBounds(line.getBounds(), { padding: [50, 50] });
                 
                 document.querySelectorAll('.extended-stats').forEach(el => {
@@ -887,6 +934,18 @@
                 });
                 
                 listItem.querySelector('.extended-stats').style.display = 'block';
+
+                // Add start and end markers
+                if (activity.coordinates && activity.coordinates.length > 0) {
+                    const startCoord = activity.coordinates[0];
+                    const endCoord = activity.coordinates[activity.coordinates.length - 1];
+
+                    const startIcon = L.divIcon({ className: 'start-marker' });
+                    const endIcon = L.divIcon({ className: 'end-marker' });
+
+                    currentStartMarker = L.marker(startCoord, { icon: startIcon, interactive: false }).addTo(map);
+                    currentEndMarker = L.marker(endCoord, { icon: endIcon, interactive: false }).addTo(map);
+                }
             };
             
             // Hover to highlight on map
