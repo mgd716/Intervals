@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,9 +45,9 @@
             padding: 15px;
             background: #ffffff;
             border-bottom: 1px solid #ddd;
-            flex-shrink: 0; /* <-- NEW: Prevents the header from getting crushed */
+            flex-shrink: 0; /* Prevents the header from getting crushed */
         }
-        /* NEW: Filter Button Styling */
+        
         #filter-toggle-btn {
             width: 100%;
             padding: 8px 12px;
@@ -70,6 +69,7 @@
         #filter-toggle-btn:hover {
             background-color: #e9ecef;
         }
+        
         .filter-row {
             display: flex;
             align-items: center;
@@ -85,9 +85,9 @@
             cursor: pointer;
             background: transparent;
         }
-        /* UPDATE: Hide the filters by default */
+        
         .sport-filters {
-            display: none; /* Changed from flex */
+            display: none; 
             flex-wrap: wrap;
             gap: 10px;
             margin-top: 10px;
@@ -98,6 +98,7 @@
             font-size: 13px;
             color: #444;
         }
+        
         #search-box, #year-select {
             width: 100%;
             padding: 8px;
@@ -105,15 +106,6 @@
             box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 4px;
-        }
-
-        .sport-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-            font-size: 13px;
-            color: #444;
         }
 
         .sport-filters label {
@@ -177,21 +169,21 @@
         @media (max-width: 768px) {
             #app-container {
                 flex-direction: column;
-                height: 100dvh; /* NEW: 'dvh' perfectly accounts for mobile address bars! */
+                height: 100dvh; 
             }
             
             #map {
                 width: 100%;
-                flex: 0 0 50%; /* Forces the map to rigidly take up exactly half the screen */
+                flex: 0 0 50%; 
             }
 
             #sidebar {
                 width: 100%;
-                flex: 1; /* Tells the sidebar to fill whatever space is left */
+                flex: 1; 
                 height: auto; 
                 border-left: none;
                 border-top: 2px solid #ccc;
-                overflow: hidden; /* Keeps the internal scrolling strictly inside the list */
+                overflow: hidden; 
             }
         }
     </style>
@@ -209,38 +201,46 @@
             
             <input type="text" id="search-box" placeholder="Search activities..." onkeyup="filterSidebar()">
             
-            <!-- NEW: The Toggle Button -->
             <button id="filter-toggle-btn" onclick="toggleFilters()">
                 Map Filters <span id="filter-icon">▼</span>
             </button>
             
             <div class="sport-filters" id="filter-container">
+                <div style="width: 100%; margin-bottom: 5px;"><strong>Category Filters</strong></div>
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-cycling" value="Cycling" checked onchange="filterSidebar()">
+                    <input type="checkbox" id="filter-cycling" value="Cycling" checked onchange="resetDropdownAndFilter()">
                     <input type="color" id="color-cycling" value="#fc4c02" onchange="updateSportColor('Cycling', this.value)">
                     <label for="filter-cycling">Cycling</label>
                 </div>
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-pavement" value="Pavement" onchange="filterSidebar()">
+                    <input type="checkbox" id="filter-pavement" value="Pavement" onchange="resetDropdownAndFilter()">
                     <input type="color" id="color-pavement" value="#007fb6" onchange="updateSportColor('Pavement', this.value)">
                     <label for="filter-pavement">Pavement</label>
                 </div>
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-dirt" value="Dirt" onchange="filterSidebar()">
+                    <input type="checkbox" id="filter-dirt" value="Dirt" onchange="resetDropdownAndFilter()">
                     <input type="color" id="color-dirt" value="#8b4513" onchange="updateSportColor('Dirt', this.value)">
                     <label for="filter-dirt">Dirt</label>
                 </div>
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-swim" value="Swim" onchange="filterSidebar()">
+                    <input type="checkbox" id="filter-swim" value="Swim" onchange="resetDropdownAndFilter()">
                     <input type="color" id="color-swim" value="#00b300" onchange="updateSportColor('Swim', this.value)">
                     <label for="filter-swim">Swimming</label>
                 </div>
                 <div class="filter-row">
-                    <input type="checkbox" id="filter-other" value="Other" onchange="filterSidebar()">
+                    <input type="checkbox" id="filter-other" value="Other" onchange="resetDropdownAndFilter()">
                     <input type="color" id="color-other" value="#666666" onchange="updateSportColor('Other', this.value)">
                     <label for="filter-other">Other</label>
                 </div>
                 
+                <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
+                
+                <!-- NEW: Scrollable Specific Sport Box -->
+                <div style="width: 100%; margin-bottom: 5px;"><strong>Specific Sport Override</strong></div>
+                <div id="specific-sport-list" style="width: 100%; max-height: 120px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; padding: 5px; background: #fff; box-sizing: border-box; font-size: 12px;">
+                    <!-- JavaScript will inject the checkboxes here -->
+                </div>
+
                 <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
                 
                 <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadrats" onchange="drawTileGrid()"> Squadrats (14)</label>
@@ -264,35 +264,36 @@
     const SUPABASE_KEY = 'sb_publishable_cMso9XTCykk7W2BYWxAGPw_xzxHCufa';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // UPDATE: Added the 'ghost-popup' class
-   // UPDATE: Combined the 'ghost-popup' class and the correct offset!
+    // Ghost Popup configuration
     const clusterPopup = L.popup({ 
         autoPan: false, 
         closeButton: false, 
         className: 'ghost-popup',
         offset: [0, -15] 
     });
+
     // ==========================================
     // 2. MAP SETUP
     // ==========================================
-    const map = L.map('map').setView([42.8864, -78.8784], 10); // Defaulting near Buffalo
-   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    const map = L.map('map').setView([42.8864, -78.8784], 10); 
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
     }).addTo(map);
 
-   window.sportGroups = {
-        Cycling: L.featureGroup().addTo(map), // <-- Only Cycling loads on the map by default
-        Pavement: L.featureGroup(),
-        Dirt: L.featureGroup(),
-        Swim: L.featureGroup(),
-        Other: L.featureGroup()
+    // Lock all layers to the map by default for dynamic toggling
+    window.sportGroups = {
+        Cycling: L.featureGroup().addTo(map), 
+        Pavement: L.featureGroup().addTo(map),
+        Dirt: L.featureGroup().addTo(map),
+        Swim: L.featureGroup().addTo(map),
+        Other: L.featureGroup().addTo(map)
     };
 
     let gridLayerGroup = L.featureGroup().addTo(map);
     let runningMapLines = [];
     const visitedTiles = new Set();
 
-// ==========================================
+    // ==========================================
     // CLUSTER TRACKING & HIGHLIGHTING
     // ==========================================
     let selectedActivityIds = null; 
@@ -309,7 +310,7 @@
         highlightedLines = []; 
     }
 
-    // NEW: Global Map Click (Handles both selecting clusters and clearing them)
+    // Global Map Click
     map.on('click', function(e) {
         const cluster = getOverlappingLines(e.latlng, 15);
         
@@ -331,7 +332,6 @@
         }
         filterSidebar();
     });
-
     
     function getSportConfig(type) {
         if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
@@ -342,12 +342,10 @@
         return { color: document.getElementById('color-other').value, group: window.sportGroups.Other };
     }
 
-
     // ==========================================
     // 3. TILE GRID LOGIC
     // ==========================================
     function drawGridForZoom(targetZoom, bounds, baseColor) {
-        // PREVENT EXTREME ZOOM-OUT: Don't attempt calculation if map zoom is too low
         if (map.getZoom() < 10) return;
         const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
         const sePoint = map.project(bounds.getSouthEast(), targetZoom);
@@ -357,8 +355,6 @@
         const minY = Math.floor(nwPoint.y / 256);
         const maxY = Math.floor(sePoint.y / 256);
 
-        // SAFETY LIMIT: Prevent browser crash if zoomed out too far
-        // If the screen requires more than 5,000 tiles, abort drawing this layer
         const totalTiles = (maxX - minX + 1) * (maxY - minY + 1);
         if (totalTiles > 5000) {
             console.log(`Skipping zoom ${targetZoom} grid: too many tiles (${totalTiles}). Zoom in closer!`);
@@ -373,21 +369,18 @@
                 const tileKey = `${targetZoom}_${x}_${y}`;
                 const isVisited = visitedTiles.has(tileKey);
 
-                // 'interactive: false' speeds up Leaflet because it stops listening for clicks on the tiles
-                // UPDATE: Added 'opacity' to make grid lines more transparent
-// and lowered 'fillOpacity' for the filled tiles.
-const currentStyle = { 
-    color: baseColor, 
-    weight: 1, 
-    opacity: 0.3,       // Controls grid line transparency (default was 1.0)
-    fillOpacity: 0, 
-    interactive: false 
-};
+                const currentStyle = { 
+                    color: baseColor, 
+                    weight: 1, 
+                    opacity: 0.3,      
+                    fillOpacity: 0, 
+                    interactive: false 
+                };
 
-if (isVisited) {
-    currentStyle.fillColor = baseColor;
-    currentStyle.fillOpacity = 0.2; // Lowered from 0.4 to 0.2 for lighter fill
-}
+                if (isVisited) {
+                    currentStyle.fillColor = baseColor;
+                    currentStyle.fillOpacity = 0.2; 
+                }
                 
                 L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(gridLayerGroup);
             }
@@ -401,12 +394,9 @@ if (isVisited) {
         const show14 = document.getElementById('filter-squadrats').checked;
         const show17 = document.getElementById('filter-squadratinhos').checked;
 
-        // Draw Zoom 14 in Orange
         if (show14) {
             drawGridForZoom(14, bounds, "#ff7800"); 
         }
-        
-        // Draw Zoom 17 in Blue
         if (show17) {
             drawGridForZoom(17, bounds, "#0066ff"); 
         }
@@ -414,38 +404,34 @@ if (isVisited) {
 
     map.on('moveend', drawTileGrid);
 
-
     // ==========================================
     // 4. DATA LOADING & UI
     // ==========================================
-    // ==========================================
-    // NEW: SPATIAL SEARCH 
-    // ==========================================
+    // SPATIAL SEARCH 
     function getOverlappingLines(latlng, tolerancePixels = 10) {
         const point = map.project(latlng);
         const matches = [];
         
         runningMapLines.forEach(line => {
-            if (!map.hasLayer(line)) return; // Skip hidden sports
+            if (!map.hasLayer(line)) return; 
             
-            // Fast bounds check so we don't calculate math for lines on the other side of the country
             const bounds = line.getBounds();
             if (!bounds.isValid() || !bounds.pad(0.01).contains(latlng)) return; 
             
-            // Detailed point-to-line distance check
             const coords = line.getLatLngs();
             for (let i = 0; i < coords.length - 1; i++) {
                 const p1 = map.project(coords[i]);
                 const p2 = map.project(coords[i+1]);
                 if (L.LineUtil.pointToSegmentDistance(point, p1, p2) <= tolerancePixels) {
                     matches.push(line);
-                    break; // Found a match, move to the next activity
+                    break; 
                 }
             }
         });
         return matches;
     }
-    // 1. Safely load ALL years for the dropdown by paginating
+    
+    // Safely load ALL years for the dropdown
     async function initDropdown() {
         let allYears = [];
         let start = 0;
@@ -460,7 +446,6 @@ if (isVisited) {
             start += chunkSize;
         }
 
-        // Remove duplicates and sort newest to oldest
         const uniqueYears = [...new Set(allYears)].sort((a, b) => b - a);
         const dropdown = document.getElementById('year-select');
         
@@ -472,13 +457,12 @@ if (isVisited) {
             }
         });
         
-        // Trigger the initial map load
         loadData("ALL");
     }
     
-    initDropdown(); // Kick off the process when the page loads
+    initDropdown();
 
-    // 2. Safely load ALL map data by paginating
+    // Safely load ALL map data
     async function loadData(targetYear) {
         runningMapLines.forEach(line => line.remove());
         runningMapLines = [];
@@ -491,7 +475,6 @@ if (isVisited) {
         let start = 0;
         const chunkSize = 1000;
 
-        // Loop until every row is downloaded
         while (true) {
             let query = _supabase.from('activities').select('*').range(start, start + chunkSize - 1);
             if (targetYear !== "ALL") {
@@ -507,45 +490,55 @@ if (isVisited) {
             if (data.length < chunkSize) break;
             start += chunkSize;
         }
-// =========================================================
-        // ADD THIS SORT STEP HERE (Newest First)
-        // =========================================================
+
+        // Sort Newest First
         activities.sort((a, b) => {
             const dateA = new Date(a.start_date || a.year);
             const dateB = new Date(b.start_date || b.year);
             return dateB - dateA;
         });
+
         // =========================================================
+        // BUILD DYNAMIC SCROLLABLE CHECKBOXES
+        // =========================================================
+        const uniqueTypes = [...new Set(activities.map(a => a.type))].sort();
+        const specificListContainer = document.getElementById('specific-sport-list');
+        specificListContainer.innerHTML = ''; 
+
+        uniqueTypes.forEach(type => {
+            const lbl = document.createElement('label');
+            lbl.style.display = 'block'; 
+            lbl.style.marginBottom = '4px';
+            lbl.style.cursor = 'pointer';
+            
+            lbl.innerHTML = `<input type="checkbox" class="specific-type-cb" value="${type}" onchange="clearCheckboxesAndFilter()"> ${type}`;
+            specificListContainer.appendChild(lbl);
+        });
+        // =========================================================
+
         const allPolylines = [];
 
-       activities.forEach(activity => {
-            // NEW: Ignore virtual rides so fake GPS data doesn't ruin the map
+        activities.forEach(activity => {
             if (activity.type === 'VirtualRide') return;
-            
             if (!activity.coordinates || activity.coordinates.length === 0) return;
 
-            // Load pre-calculated tiles from the database
             if (activity.visited_tiles) {
                 activity.visited_tiles.forEach(tile => visitedTiles.add(tile));
             }
 
-            // Draw Line
             const config = getSportConfig(activity.type);
             const line = L.polyline(activity.coordinates, {
                 color: config.color,
-                weight: 4,          // INCREASED: Thicker lines look better for heatmaps
-                opacity: 0.3,      // DECREASED: This is the magic heatmap number!
+                weight: 4,          
+                opacity: 0.3,      
                 smoothFactor: 1
             });
            
-            line.sportType = activity.type; // <-- Add this tag so we can recolor it later
+            line.sportType = activity.type; 
 
-           
-            // NEW: Format the date nicely (e.g., "Tue, Aug 11, 2026")
             let dateStr = activity.year;
             if (activity.start_date) {
                 const d = new Date(activity.start_date);
-                // "undefined" uses the browser's local timezone settings
                 dateStr = d.toLocaleDateString(undefined, { 
                     weekday: 'short', 
                     month: 'short', 
@@ -554,14 +547,12 @@ if (isVisited) {
                 });
             }
 
-         // Attach the data directly to the line so we can read it on hover
             line.activityData = activity;
-            line.sportType = activity.type; 
             line.addTo(config.group);
             
-            // 1. CLUSTER HOVER
+            // CLUSTER HOVER
             line.on('mouseover', function (e) {
-                clearMapHighlights(); // Instantly wipe any stuck ghost lines before drawing new ones
+                clearMapHighlights(); 
                 
                 const cluster = getOverlappingLines(e.latlng, 10);
                 cluster.sort((a, b) => new Date(b.activityData.start_date || b.activityData.year) - new Date(a.activityData.start_date || a.activityData.year));
@@ -571,15 +562,15 @@ if (isVisited) {
                 cluster.forEach((l, index) => {
                     l.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
                     l.bringToFront();
-                    highlightedLines.push(l); // Store safely in our master array for cleanup
+                    highlightedLines.push(l); 
                     
                     if (index < 5) {
                         const act = l.activityData;
-                        const dateStr = act.start_date ? new Date(act.start_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' }) : act.year;
+                        const dStr = act.start_date ? new Date(act.start_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' }) : act.year;
                         
                         html += `<div style="margin-bottom: 3px;">
                                     <a href="https://intervals.icu/activities/${act.id}" target="_blank" style="text-decoration: none; color: #333; font-size: 13px;">
-                                        ${act.name} (${dateStr})
+                                        ${act.name} (${dStr})
                                     </a>
                                  </div>`;
                     }
@@ -593,24 +584,21 @@ if (isVisited) {
                 clusterPopup.setLatLng(e.latlng).setContent(html).openOn(map);
             });
 
-            // 2. UN-HOVER
+            // UN-HOVER
             line.on('mouseout', function () {
                 clearMapHighlights();
             });
 
-            // 3. DESKTOP LINE CLICK FIX
+            // DESKTOP LINE CLICK FIX
             line.on('click', function (e) {
-                // Calculate the cluster exactly where the mouse clicked
                 const cluster = getOverlappingLines(e.latlng, 15);
                 
                 if (cluster.length > 0) {
                     selectedActivityIds = cluster.map(l => String(l.activityData.id));
                     document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
                     
-                    // Scroll sidebar to the top
                     document.getElementById('activity-list').scrollTop = 0;
                     
-                    // Expand the stats for all selected activities
                     document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
                     selectedActivityIds.forEach(id => {
                         const card = document.getElementById(`sidebar-item-${id}`);
@@ -619,8 +607,6 @@ if (isVisited) {
                     
                     filterSidebar();
                 }
-                
-                // Stop the click from passing through to the map beneath it
                 L.DomEvent.stopPropagation(e); 
             });
                  
@@ -667,21 +653,17 @@ if (isVisited) {
                 }
             }
 
-           
-            
-          // Build Sidebar Item
+            // Build Sidebar Item
             const listItem = document.createElement('div');
             listItem.className = 'activity-item';
             listItem.id = `sidebar-item-${activity.id}`; 
             listItem.setAttribute('data-type', activity.type);
-            listItem.setAttribute('data-id', String(activity.id)); // <-- UPDATE: Force String
+            listItem.setAttribute('data-id', String(activity.id)); 
             
-            // NEW: Create a hidden search string so the browser doesn't have to read the screen
             const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
             listItem.setAttribute('data-search', searchString);
             
-           listItem.innerHTML = `
-                <!-- UPDATE: Title is now a direct link to Intervals -->
+            listItem.innerHTML = `
                 <h4 style="margin: 0 0 5px 0;">
                     <a href="https://intervals.icu/activities/${activity.id}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
                         ${activity.name} ↗
@@ -689,7 +671,6 @@ if (isVisited) {
                 </h4>
                 <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${activity.type} | ${dateStr}</p>
                 
-                <!-- Primary Stats (Always visible) -->
                 <div class="activity-stats">
                     <div class="stat-box">
                         <span class="stat-label">Distance</span>
@@ -705,7 +686,6 @@ if (isVisited) {
                     </div>
                 </div>
 
-                <!-- Extended Stats (Hidden by default) -->
                 <div class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
                     <div class="activity-stats">
                         <div class="stat-box">
@@ -726,28 +706,22 @@ if (isVisited) {
 
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
-                // Fly to the map location
                 map.fitBounds(line.getBounds(), { padding: [50, 50] });
                 
-                // Collapse any previously opened extended stats
                 document.querySelectorAll('.extended-stats').forEach(el => {
                     el.style.display = 'none';
                 });
                 
-                // Expand the stats for this specific activity
                 listItem.querySelector('.extended-stats').style.display = 'block';
             };
-           // NEW: Hover to highlight on map
+            
+            // Hover to highlight on map
             listItem.addEventListener('mouseenter', () => {
-                // Change to bright yellow, make it fully opaque, and slightly thicker
                 line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
-                
-                // Bring it to the top so it isn't buried under your dense heatmap layers
                 line.bringToFront(); 
             });
 
             listItem.addEventListener('mouseleave', () => {
-                // Revert to whatever the current color picker is set to, and restore heatmap opacity
                 const currentConfig = getSportConfig(activity.type);
                 line.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.3 });
             });
@@ -760,9 +734,9 @@ if (isVisited) {
             const group = L.featureGroup(allPolylines);
             map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
-    // NEW: Force the sidebar to hide unchecked sports the moment the page loads
         filterSidebar();
     }
+
     // ==========================================
     // 5. FILTERING
     // ==========================================
@@ -770,8 +744,27 @@ if (isVisited) {
         loadData(document.getElementById('year-select').value);
     }
 
+    // 1. If a user clicks a broad category, uncheck all specific sports
+    function resetDropdownAndFilter() {
+        document.querySelectorAll('.specific-type-cb').forEach(cb => cb.checked = false);
+        filterSidebar();
+    }
+
+    // 2. If a user clicks a specific sport, uncheck all broad categories
+    function clearCheckboxesAndFilter() {
+        document.getElementById('filter-cycling').checked = false;
+        document.getElementById('filter-pavement').checked = false;
+        document.getElementById('filter-dirt').checked = false;
+        document.getElementById('filter-swim').checked = false;
+        document.getElementById('filter-other').checked = false;
+        filterSidebar();
+    }
+
+    // 3. The Master Filter
     function filterSidebar() {
         const query = document.getElementById('search-box').value.toLowerCase();
+        
+        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
         
         const showCycling = document.getElementById('filter-cycling').checked;
         const showPavement = document.getElementById('filter-pavement').checked;
@@ -779,51 +772,71 @@ if (isVisited) {
         const showSwim = document.getElementById('filter-swim').checked;
         const showOther = document.getElementById('filter-other').checked;
 
-        if (showCycling) map.addLayer(window.sportGroups.Cycling); else map.removeLayer(window.sportGroups.Cycling);
-        if (showPavement) map.addLayer(window.sportGroups.Pavement); else map.removeLayer(window.sportGroups.Pavement);
-        if (showDirt) map.addLayer(window.sportGroups.Dirt); else map.removeLayer(window.sportGroups.Dirt);
-        if (showSwim) map.addLayer(window.sportGroups.Swim); else map.removeLayer(window.sportGroups.Swim);
-        if (showOther) map.addLayer(window.sportGroups.Other); else map.removeLayer(window.sportGroups.Other);
+        // A. Filter Map Lines Individually
+        runningMapLines.forEach(line => {
+            const config = getSportConfig(line.sportType);
+            const type = line.sportType;
+            let matchesType = false;
 
+            if (specificSports.length > 0) {
+                matchesType = specificSports.includes(type);
+            } else {
+                if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
+                else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
+                else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
+                else if (type.includes('Swim')) matchesType = showSwim;
+                else matchesType = showOther;
+            }
+
+            if (matchesType) {
+                if (!config.group.hasLayer(line)) config.group.addLayer(line);
+            } else {
+                if (config.group.hasLayer(line)) config.group.removeLayer(line);
+            }
+        });
+
+        // B. Filter Sidebar Items
         const items = document.querySelectorAll('.activity-item');
         items.forEach(item => {
             const activityId = String(item.getAttribute('data-id')); 
             
-            // 1. IF A MAP CLUSTER IS SELECTED, IGNORE EVERYTHING ELSE
             if (selectedActivityIds !== null) {
                 if (selectedActivityIds.includes(activityId)) {
                     item.style.display = 'block';
                 } else {
                     item.style.display = 'none';
                 }
-                return; // Skips the checkbox math and moves to the next item
+                return; 
             }
 
-            // 2. OTHERWISE, USE THE SEARCH AND CHECKBOXES
             const text = item.getAttribute('data-search'); 
             const type = item.getAttribute('data-type');
-
             const matchesSearch = text.includes(query);
-
+            
             let matchesType = false;
-            if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
-            else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
-            else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
-            else if (type.includes('Swim')) matchesType = showSwim;
-            else matchesType = showOther;
+            
+            if (specificSports.length > 0) {
+                matchesType = specificSports.includes(type);
+            } else {
+                if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
+                else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
+                else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
+                else if (type.includes('Swim')) matchesType = showSwim;
+                else matchesType = showOther;
+            }
 
-    if (matchesSearch && matchesType) {
+            if (matchesSearch && matchesType) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }
-        }); // <-- This correctly closes the items.forEach loop!
+        }); 
     }
+
     function toggleFilters() {
         const container = document.getElementById('filter-container');
         const icon = document.getElementById('filter-icon');
         
-        // If it's hidden, show it using flexbox. If it's showing, hide it.
         if (container.style.display === 'none' || container.style.display === '') {
             container.style.display = 'flex';
             icon.textContent = '▲';
@@ -832,15 +845,16 @@ if (isVisited) {
             icon.textContent = '▼';
         }
     }
+
     function toggleTiles() {
         const showTiles = document.getElementById('filter-tiles').checked;
-        
         if (showTiles) {
             map.addLayer(gridLayerGroup);
         } else {
             map.removeLayer(gridLayerGroup);
         }
     }
+
     function updateSportColor(baseType, newColor) {
         runningMapLines.forEach(line => {
             let match = false;
@@ -853,7 +867,6 @@ if (isVisited) {
             else if (baseType === 'Other' && !t.includes('Ride') && !t.includes('VirtualRide') && !t.includes('EBike') && t !== 'Run' && t !== 'Walk' && t !== 'Hike' && t !== 'TrailRun' && !t.includes('Swim')) match = true;
             
             if (match) {
-                // Leaflet's built-in setStyle lets us change colors without redrawing the map!
                 line.setStyle({ color: newColor }); 
             }
         });
