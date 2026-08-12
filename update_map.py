@@ -122,6 +122,7 @@ def main():
         print(f"Checking {len(activities)} total activities against {len(existing_ids)} in database...")
         
         new_downloads = 0
+        activities_to_upsert = []
         
         for idx, act in enumerate(activities):
             act_id = str(act.get("id"))
@@ -151,8 +152,8 @@ def main():
 
             new_downloads += 1
             
-            # UPSERT runs for ALL activities now, with or without GPS coordinates
-            supabase.table("activities").upsert({
+            # Append to batch list instead of individual upserts
+            activities_to_upsert.append({
                 "id": act_id,
                 "type": act_type,
                 "name": act_name,
@@ -176,9 +177,10 @@ def main():
                 "coordinates": coordinates,
                 "raw_data": act,
                 "visited_tiles": activity_tiles
-            }).execute()
-            
-            time.sleep(0.2)
+            })
+
+        if activities_to_upsert:
+            supabase.table("activities").upsert(activities_to_upsert).execute()
 
         print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
 
