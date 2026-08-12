@@ -408,9 +408,21 @@
         // Apply the new visual state
         filterSidebar();
     });
-    
+    function getSportConfig(type) {
+        // NEW: Safety guard prevents the map from crashing if an activity has no type
+        if (!type) type = 'Other'; 
+
+        if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
+        if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
+        if (type === 'Hike' || type === 'TrailRun') return { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt };
+        if (type.includes('Swim')) return { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim };
+        
+        return { color: document.getElementById('color-other').value, group: window.sportGroups.Other };
+    }
     // Maps a specific sport type string to its corresponding category color and layer group
    function getSportIcon(type) {
+
+       if (!type) type = 'Other';
         const style = 'style="vertical-align: middle; display: inline-block;"';
 
         if (type.includes('EBike')) {
