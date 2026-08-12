@@ -244,12 +244,17 @@
                 </select>
 
                 <!-- Sort dropdown -->
-                <select id="sort-select" onchange="sortActivities()">
-                    <option value="date">Sort: Date</option>
-                    <option value="distance">Sort: Distance</option>
-                    <option value="time">Sort: Time</option>
-                    <option value="pace">Sort: Pace</option>
-                </select>
+                <div style="display: flex; gap: 5px; width: 100%;">
+                    <select id="sort-select" onchange="onSortSelectChange()">
+                        <option value="date">Sort: Date</option>
+                        <option value="distance">Sort: Distance</option>
+                        <option value="time">Sort: Time</option>
+                        <option value="pace">Sort: Pace</option>
+                    </select>
+                    <button id="sort-dir-btn" onclick="toggleSortDirection()" style="background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0 8px; display: flex; align-items: center; justify-content: center;" title="Toggle sort direction">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="m18 21l-4-4h3V7h-3l4-4l4 4h-3v10h3M2 19v-2h10v2M2 13v-2h7v2M2 7V5h4v2z" /></svg>
+                    </button>
+                </div>
             </div>
             
             <!-- Text search for activities -->
@@ -890,34 +895,70 @@
     // 5. FILTERING & SORTING
     // ==========================================
 
+    let isSortAscending = false;
+
+    function toggleSortDirection() {
+        isSortAscending = !isSortAscending;
+
+        // Visual indicator could be added here if desired,
+        // e.g. rotating the icon or changing its background
+        const btn = document.getElementById('sort-dir-btn');
+        if (isSortAscending) {
+            btn.style.background = '#e9ecef';
+        } else {
+            btn.style.background = 'white';
+        }
+
+        sortActivities();
+    }
+
+    function onSortSelectChange() {
+        // Reset to descending by default when changing sort type
+        isSortAscending = false;
+        document.getElementById('sort-dir-btn').style.background = 'white';
+        sortActivities();
+    }
+
     function sortActivities() {
         const listContainer = document.getElementById('activity-list');
         const items = Array.from(listContainer.querySelectorAll('.activity-item'));
         const sortType = document.getElementById('sort-select').value;
 
         items.sort((a, b) => {
+            let result = 0;
             if (sortType === 'date') {
                 const dateA = new Date(a.getAttribute('data-date'));
                 const dateB = new Date(b.getAttribute('data-date'));
-                return dateB - dateA; // Descending (newest first)
+                result = dateB - dateA; // Descending (newest first)
             } else if (sortType === 'distance') {
                 const distA = parseFloat(a.getAttribute('data-distance')) || 0;
                 const distB = parseFloat(b.getAttribute('data-distance')) || 0;
-                return distB - distA; // Descending (longest first)
+                result = distB - distA; // Descending (longest first)
             } else if (sortType === 'time') {
                 const timeA = parseFloat(a.getAttribute('data-time')) || 0;
                 const timeB = parseFloat(b.getAttribute('data-time')) || 0;
-                return timeB - timeA; // Descending (longest first)
+                result = timeB - timeA; // Descending (longest first)
             } else if (sortType === 'pace') {
                 const speedA = parseFloat(a.getAttribute('data-speed')) || 0;
                 const speedB = parseFloat(b.getAttribute('data-speed')) || 0;
-                return speedB - speedA; // Descending speed (fastest pace first)
+                result = speedB - speedA; // Descending speed (fastest pace first)
             }
-            return 0;
+
+            return isSortAscending ? -result : result;
         });
 
         // Re-append sorted items to the container
         items.forEach(item => listContainer.appendChild(item));
+
+        // Ensure the SVG arrow icon rotates to point up when ascending
+        const btn = document.getElementById('sort-dir-btn');
+        if (btn) {
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.style.transform = isSortAscending ? 'scaleY(-1)' : 'none';
+                svg.style.transition = 'transform 0.2s';
+            }
+        }
     }
 
     // Debounce utility to prevent UI blocking on every keystroke when typing in the search box
