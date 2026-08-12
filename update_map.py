@@ -144,6 +144,40 @@ def main():
             time.sleep(0.2)
 
         print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
+
+    import datetime
+
+def fetch_wellness_data(days_back=14):
+    """Fetches daily wellness records (including steps) from Intervals.icu"""
+    base_url = "https://intervals.icu/"
+    today = datetime.date.today()
+    oldest = today - datetime.timedelta(days=days_back)
+    
+    endpoint = f"api/v1/athlete/{ATHLETE_ID}/wellness?oldest={oldest}&newest={today}"
+    response = requests.get(base_url + endpoint, auth=HTTPBasicAuth('API_KEY', API_KEY))
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to fetch wellness data: {response.status_code}")
+        return []
+
+def sync_steps_to_supabase(days_back=14):
+    wellness_records = fetch_wellness_data(days_back)
+    print(f"Processing steps for the last {len(wellness_records)} wellness entries...")
+    
+    for record in wellness_records:
+        entry_date = record.get("id") # Format: "YYYY-MM-DD"
+        steps = record.get("steps")
+        
+        # Only update if step data is available for that day
+        if entry_date and steps is not None:
+            supabase.table("macro_logs").upsert({
+                "date": entry_date,   # Assumes 'date' is your primary/unique key on macro_logs
+                "steps": int(steps)
+            }, on_conflict="date").execute()
+
+    print("Steps sync complete!")
         
     except Exception as e:
         print(f"Error during execution: {e}")
