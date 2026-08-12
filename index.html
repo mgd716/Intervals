@@ -347,6 +347,8 @@
     // 3. TILE GRID LOGIC
     // ==========================================
     function drawGridForZoom(targetZoom, bounds, baseColor) {
+        // PREVENT EXTREME ZOOM-OUT: Don't attempt calculation if map zoom is too low
+        if (map.getZoom() < 10) return;
         const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
         const sePoint = map.project(bounds.getSouthEast(), targetZoom);
         
@@ -356,9 +358,9 @@
         const maxY = Math.floor(sePoint.y / 256);
 
         // SAFETY LIMIT: Prevent browser crash if zoomed out too far
-        // If the screen requires more than 3,000 tiles, abort drawing this layer
+        // If the screen requires more than 5,000 tiles, abort drawing this layer
         const totalTiles = (maxX - minX + 1) * (maxY - minY + 1);
-        if (totalTiles > 3000) {
+        if (totalTiles > 5000) {
             console.log(`Skipping zoom ${targetZoom} grid: too many tiles (${totalTiles}). Zoom in closer!`);
             return; 
         }
