@@ -99,7 +99,7 @@ def main():
 
     try:
         # We initialize the client HERE so the script can validate the strings first
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)[cite: 3]
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         
         # 1. Fetch ALL existing IDs by paginating in chunks of 1000
         existing_ids = set()
