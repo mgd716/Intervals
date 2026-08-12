@@ -372,11 +372,20 @@
                 const isVisited = visitedTiles.has(tileKey);
 
                 // 'interactive: false' speeds up Leaflet because it stops listening for clicks on the tiles
-                const currentStyle = { color: baseColor, weight: 1, fillOpacity: 0, interactive: false };
-                if (isVisited) {
-                    currentStyle.fillColor = baseColor;
-                    currentStyle.fillOpacity = 0.4;
-                }
+                // UPDATE: Added 'opacity' to make grid lines more transparent
+// and lowered 'fillOpacity' for the filled tiles.
+const currentStyle = { 
+    color: baseColor, 
+    weight: 1, 
+    opacity: 0.3,       // Controls grid line transparency (default was 1.0)
+    fillOpacity: 0, 
+    interactive: false 
+};
+
+if (isVisited) {
+    currentStyle.fillColor = baseColor;
+    currentStyle.fillOpacity = 0.2; // Lowered from 0.4 to 0.2 for lighter fill
+}
                 
                 L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(gridLayerGroup);
             }
