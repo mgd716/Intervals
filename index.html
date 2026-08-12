@@ -9,10 +9,12 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        /* THE GHOST HACK: Forces the mouse to pass straight through the popup */
+        /* Forces the mouse to pass straight through the popup */
         .ghost-popup {
             pointer-events: none !important;
         }
+
+        /* Reset default margins and set full height for the page layout */
         body, html {
             margin: 0;
             padding: 0;
@@ -20,17 +22,20 @@
             font-family: Arial, sans-serif;
         }
 
+        /* Main application wrapper, using flexbox to position map and sidebar side-by-side */
         #app-container {
             display: flex;
             height: 100vh;
             width: 100vw;
         }
 
+        /* The Leaflet map container, flex-grow allows it to take up remaining space */
         #map {
             flex-grow: 1;
             height: 100%;
         }
 
+        /* Fixed-width sidebar for controls and activity list */
         #sidebar {
             width: 350px;
             height: 100%;
@@ -41,13 +46,15 @@
             z-index: 1000; /* Keeps it above the Leaflet map */
         }
 
+        /* Sidebar header containing filters and search, pinned to the top */
         .sidebar-header {
             padding: 15px;
             background: #ffffff;
             border-bottom: 1px solid #ddd;
-            flex-shrink: 0; /* Prevents the header from getting crushed */
+            flex-shrink: 0; /* Prevents the header from getting crushed when the list is long */
         }
         
+        /* Button to toggle the visibility of map filters */
         #filter-toggle-btn {
             width: 100%;
             padding: 8px 12px;
@@ -70,6 +77,7 @@
             background-color: #e9ecef;
         }
         
+        /* Row layout for individual filter checkboxes and color pickers */
         .filter-row {
             display: flex;
             align-items: center;
@@ -77,6 +85,7 @@
             width: 100%;
         }
 
+        /* Minimal styling for color pickers */
         .filter-row input[type="color"] {
             border: none;
             width: 20px;
@@ -86,6 +95,7 @@
             background: transparent;
         }
         
+        /* Container for all sport-specific filters (hidden by default) */
         .sport-filters {
             display: none; 
             flex-wrap: wrap;
@@ -99,6 +109,7 @@
             color: #444;
         }
         
+        /* Styling for text search box and year selection dropdown */
         #search-box, #year-select {
             width: 100%;
             padding: 8px;
@@ -108,6 +119,7 @@
             border-radius: 4px;
         }
 
+        /* Label alignment for filter checkboxes */
         .sport-filters label {
             display: flex;
             align-items: center;
@@ -115,11 +127,13 @@
             cursor: pointer;
         }
 
+        /* Scrollable container for the list of activities */
         #activity-list {
             flex-grow: 1;
             overflow-y: auto;
         }
 
+        /* Individual activity card styling */
         .activity-item {
             padding: 15px;
             border-bottom: 1px solid #eee;
@@ -131,18 +145,21 @@
             background: #e9ecef;
         }
 
+        /* Activity title */
         .activity-item h4 {
             margin: 0 0 5px 0;
             font-size: 14px;
             color: #333;
         }
 
+        /* Activity type and date subtitle */
         .activity-item p {
             margin: 0 0 5px 0;
             font-size: 12px;
             color: #555;
         }
 
+        /* Layout for primary activity stats (distance, time, pace) */
         .activity-stats {
             display: flex;
             justify-content: space-between;
@@ -151,11 +168,13 @@
             color: #222;
         }
 
+        /* Container for a single stat label and value */
         .stat-box {
             display: flex;
             flex-direction: column;
         }
 
+        /* Label for an individual stat */
         .stat-label {
             font-size: 11px;
             color: #777;
@@ -190,22 +209,31 @@
 </head>
 <body>
 
+<!-- Main application wrapper -->
 <div id="app-container">
+    <!-- Map container -->
     <div id="map"></div>
     
+    <!-- Sidebar for controls and activity list -->
     <div id="sidebar">
+        <!-- Static header section containing filters -->
         <div class="sidebar-header">
+            <!-- Year filter dropdown -->
             <select id="year-select" onchange="filterMapByYear()">
                 <option value="ALL">Show All Years</option>
             </select>
             
+            <!-- Text search for activities -->
             <input type="text" id="search-box" placeholder="Search activities..." onkeyup="debouncedFilterSidebar()">
             
+            <!-- Toggle button for expanding/collapsing map filters -->
             <button id="filter-toggle-btn" onclick="toggleFilters()">
                 Map Filters <span id="filter-icon">▼</span>
             </button>
             
+            <!-- Container for filtering options (initially hidden) -->
             <div class="sport-filters" id="filter-container">
+                <!-- Broad category filters (Cycling, Pavement, Dirt, etc.) -->
                 <div style="width: 100%; margin-bottom: 5px;"><strong>Category Filters</strong></div>
                 <div class="filter-row">
                     <input type="checkbox" id="filter-cycling" value="Cycling" checked onchange="resetDropdownAndFilter()">
@@ -235,23 +263,26 @@
                 
                 <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
                 
-                <!-- NEW: Scrollable Specific Sport Box -->
+                <!-- Scrollable Specific Sport Box -->
                 <div style="width: 100%; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
                     <strong>Specific Sport Override</strong>
-                    <!-- The new master color picker for specific sports -->
+                    <!-- The master color picker for specific sports -->
                     <input type="color" id="color-specific" value="#e83e8c" onchange="updateSpecificSportColor(this.value)" style="border: none; width: 20px; height: 24px; padding: 0; cursor: pointer; background: transparent;">
                 </div>
+                <!-- Container for dynamically injected specific sport checkboxes -->
                 <div id="specific-sport-list" style="width: 100%; max-height: 120px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; padding: 5px; background: #fff; box-sizing: border-box; font-size: 12px;">
                     <!-- JavaScript will inject the checkboxes here -->
                 </div>
 
                 <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
                 
+                <!-- Grid tile overlays (Squadrats) -->
                 <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadrats" onchange="drawTileGrid()"> Squadrats (14)</label>
                 <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadratinhos" onchange="drawTileGrid()"> Squadratinhos (17)</label>
             </div>
         </div>
         
+        <!-- Scrollable container for the dynamic list of activity items -->
         <div id="activity-list"></div>
     </div>
 </div>
@@ -268,7 +299,7 @@
     const SUPABASE_KEY = 'sb_publishable_cMso9XTCykk7W2BYWxAGPw_xzxHCufa';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Ghost Popup configuration
+    // Popup configuration used for hover clusters (non-interactive)
     const clusterPopup = L.popup({ 
         autoPan: false, 
         closeButton: false, 
@@ -279,12 +310,13 @@
     // ==========================================
     // 2. MAP SETUP
     // ==========================================
+    // Initialize Leaflet map, centered roughly on Buffalo, NY
     const map = L.map('map').setView([42.8864, -78.8784], 10); 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
     }).addTo(map);
 
-    // Lock all layers to the map by default for dynamic toggling
+    // Grouping layers by sport category for easy batch toggling
     window.sportGroups = {
         Cycling: L.featureGroup().addTo(map), 
         Pavement: L.featureGroup().addTo(map),
@@ -300,10 +332,12 @@
     // ==========================================
     // CLUSTER TRACKING & HIGHLIGHTING
     // ==========================================
+    // State variables for managing selected and highlighted lines
     let selectedActivityIds = null; 
     let activeHoverLines = [];
     let highlightedLines = []; 
 
+   // Resets the map styling for any lines that were currently highlighted
    function clearMapHighlights() {
         const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
         const specificColor = document.getElementById('color-specific').value;
@@ -318,22 +352,27 @@
                     restoreColor = specificColor;
                 }
                 
+                // Revert to original unhighlighted state
                 l.setStyle({ color: restoreColor, weight: 4, opacity: 0.30 });
             }
         });
         highlightedLines = []; 
     }
 
-    // Global Map Click
+    // Map click handler to select a specific cluster of lines
     map.on('click', function(e) {
+        // Find lines within a short pixel distance from the click
         const cluster = getOverlappingLines(e.latlng, 15);
         
         if (cluster.length > 0) {
+            // Isolate map to show only clicked activities
             selectedActivityIds = cluster.map(l => String(l.activityData.id));
             document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
             
+            // Scroll to the top of the sidebar
             document.getElementById('activity-list').scrollTop = 0;
             
+            // Expand the extended stats section for clicked activities in the sidebar
             document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
             selectedActivityIds.forEach(id => {
                 const card = document.getElementById(`sidebar-item-${id}`);
@@ -341,12 +380,15 @@
             });
             
         } else {
+            // If click is empty, reset view to all activities
             selectedActivityIds = null;
             document.getElementById('search-box').placeholder = "Search activities...";
         }
+        // Apply the new visual state
         filterSidebar();
     });
     
+    // Maps a specific sport type string to its corresponding category color and layer group
     function getSportConfig(type) {
         if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
         if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
@@ -421,17 +463,21 @@
     // ==========================================
     // 4. DATA LOADING & UI
     // ==========================================
-    // SPATIAL SEARCH 
+
+    // SPATIAL SEARCH: Given a lat/lng, find all lines on the map that intersect within a specific pixel tolerance
     function getOverlappingLines(latlng, tolerancePixels = 10) {
+        // Project map coordinates into pixels for distance calculation
         const point = map.project(latlng);
         const matches = [];
         
         runningMapLines.forEach(line => {
             if (!map.hasLayer(line)) return; 
             
+            // Fast bounding box check to exclude lines far away
             const bounds = line.getBounds();
             if (!bounds.isValid() || !bounds.pad(0.01).contains(latlng)) return; 
             
+            // Detailed segment-by-segment check if inside bounding box
             const coords = line.getLatLngs();
             for (let i = 0; i < coords.length - 1; i++) {
                 const p1 = map.project(coords[i]);
@@ -445,7 +491,7 @@
         return matches;
     }
     
-    // Safely load ALL years for the dropdown
+    // Fetch unique years from Supabase to populate the filtering dropdown
     async function initDropdown() {
         let allYears = [];
         let start = 0;
@@ -514,6 +560,7 @@
 
         // =========================================================
         // BUILD DYNAMIC SCROLLABLE CHECKBOXES
+        // Populate the Specific Sport Override filter box with all discovered types
         // =========================================================
         const uniqueTypes = [...new Set(activities.map(a => a.type))].sort();
         const specificListContainer = document.getElementById('specific-sport-list');
@@ -754,7 +801,8 @@
     // ==========================================
     // 5. FILTERING
     // ==========================================
-    // Debounce utility to prevent UI blocking on every keystroke
+
+    // Debounce utility to prevent UI blocking on every keystroke when typing in the search box
     function debounce(func, wait) {
         let timeout;
         return function(...args) {
@@ -765,6 +813,7 @@
 
     const debouncedFilterSidebar = debounce(filterSidebar, 300);
 
+    // Refresh map state when changing the year
     function filterMapByYear() {
         loadData(document.getElementById('year-select').value);
     }
@@ -785,7 +834,7 @@
         filterSidebar();
     }
 
-    // 3. The Master Filter
+    // 3. The Master Filter: Responsible for coordinating all visible elements (map layers and sidebar list)
     function filterSidebar() {
         const query = document.getElementById('search-box').value.toLowerCase();
         
@@ -826,13 +875,16 @@
                 let matchesType = false;
 
                 if (specificSports.length > 0) {
+                    // Check if the exact specific sport matches
                     matchesType = specificSports.includes(type);
                     if (matchesType) {
                         line.setStyle({ color: specificColor });
                     }
                 } else {
+                    // Revert to broad category coloring
                     line.setStyle({ color: config.color });
                     
+                    // Check against broad category filters
                     if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
                     else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
                     else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
@@ -856,6 +908,7 @@
         items.forEach(item => {
             const activityId = String(item.getAttribute('data-id')); 
             
+            // Map Cluster Override mode for sidebar
             if (selectedActivityIds !== null) {
                 if (selectedActivityIds.includes(activityId)) {
                     item.style.display = 'block';
