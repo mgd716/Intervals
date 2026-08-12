@@ -73,7 +73,7 @@ def sync_steps_to_supabase(supabase_client, days_back=1400):
         
         # Only update if step data is available for that day
         if entry_date and steps is not None:
-            supabase.table("macro_logs").upsert({
+            supabase_client.table("macro_logs").upsert({
                 "date": entry_date,   # Assumes 'date' is your primary/unique key on macro_logs
                 "steps": int(steps)
             }, on_conflict="date").execute()
@@ -99,7 +99,7 @@ def main():
 
     try:
         # We initialize the client HERE so the script can validate the strings first
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)[cite: 3]
         
         # 1. Fetch ALL existing IDs by paginating in chunks of 1000
         existing_ids = set()
