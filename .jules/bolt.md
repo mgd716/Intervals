@@ -15,3 +15,6 @@
 **Learning:** Calling intensive rendering functions like `drawTileGrid()` inside a loop or a batch processing function (`processAndRenderBatch`) that gets called multiple times per initial data load causes unnecessary re-renders. Moving it to execute only once at the end of the entire data load flow (`loadData`) significantly reduces load times (time roughly halved from 8.14s to 4.16s).
 
 **Action:** Ensure that expensive map operations, like rendering grid systems based on map bounds, are only called when the final state of the map/data is reached, rather than iteratively during data population.
+## 2026-08-12 - [Supabase Query Optimization]
+ **Learning:** [Using `select('*')` on large tables with JSONB columns significantly slows down frontend load times due to massive data payloads.]
+ **Action:** [Always query only the specific columns needed, and extract specific nested fields from JSONB columns using `->` syntax in Supabase (e.g., `raw_data->distance`) to minimize payload size.]
