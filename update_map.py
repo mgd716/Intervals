@@ -48,7 +48,7 @@ def get_tile(lat, lon, zoom):
     ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
     return f"{zoom}_{xtile}_{ytile}"
 
-def fetch_wellness_data(days_back=1400):
+def fetch_wellness_data(days_back=14):
     """Fetches daily wellness records (including steps) from Intervals.icu"""
     base_url = "https://intervals.icu/"
     today = datetime.date.today()
@@ -63,20 +63,24 @@ def fetch_wellness_data(days_back=1400):
         print(f"Failed to fetch wellness data: {response.status_code}")
         return []
 
-def sync_steps_to_supabase(supabase_client, days_back=1400):
+def sync_steps_to_supabase(supabase_client, days_back=14):
     wellness_records = fetch_wellness_data(days_back)
     print(f"Processing steps for the last {len(wellness_records)} wellness entries...")
     
+    upsert_data = []
     for record in wellness_records:
         entry_date = record.get("id") # Format: "YYYY-MM-DD"
         steps = record.get("steps")
         
-        # Only update if step data is available for that day
+        # Only add to list if step data is available for that day
         if entry_date and steps is not None:
-            supabase_client.table("macro_logs").upsert({
+            upsert_data.append({
                 "date": entry_date,   # Assumes 'date' is your primary/unique key on macro_logs
                 "steps": int(steps)
-            }, on_conflict="date").execute()
+            })
+
+    if upsert_data:
+        supabase_client.table("macro_logs").upsert(upsert_data, on_conflict="date").execute()
 
     print("Steps sync complete!")
 
@@ -181,7 +185,7 @@ def main():
         print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
 
     # --- Step Sync ---
-        sync_steps_to_supabase(supabase, days_back=1400)
+        sync_steps_to_supabase(supabase, days_back=14)
 
 
         

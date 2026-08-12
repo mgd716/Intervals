@@ -355,7 +355,6 @@
     // ==========================================
     // State variables for managing selected and highlighted lines
     let selectedActivityIds = null; 
-    let activeHoverLines = [];
     let highlightedLines = []; 
 
    // Resets the map styling for any lines that were currently highlighted
@@ -943,6 +942,14 @@
         filterSidebar();
     }
 
+    function DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther) {
+        if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return showCycling;
+        if (type === 'Run' || type === 'Walk') return showPavement;
+        if (type === 'Hike' || type === 'TrailRun') return showDirt;
+        if (type.includes('Swim')) return showSwim;
+        return showOther;
+    }
+
     // 3. The Master Filter: Responsible for coordinating all visible elements (map layers and sidebar list)
     function filterSidebar() {
         const query = document.getElementById('search-box').value.toLowerCase();
@@ -994,11 +1001,7 @@
                     line.setStyle({ color: config.color });
                     
                     // Check against broad category filters
-                    if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
-                    else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
-                    else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
-                    else if (type.includes('Swim')) matchesType = showSwim;
-                    else matchesType = showOther;
+                    matchesType = DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther);
                 }
                 
                 isVisible = matchesSearch && matchesType;
@@ -1036,11 +1039,7 @@
             if (specificSports.length > 0) {
                 matchesType = specificSports.includes(type);
             } else {
-                if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
-                else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
-                else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
-                else if (type.includes('Swim')) matchesType = showSwim;
-                else matchesType = showOther;
+                matchesType = DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther);
             }
 
             if (matchesSearch && matchesType) {
