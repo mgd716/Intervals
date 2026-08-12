@@ -109,14 +109,25 @@
             color: #444;
         }
         
-        /* Styling for text search box and year selection dropdown */
-        #search-box, #year-select {
+        /* Container for side-by-side dropdowns */
+        .dropdown-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Styling for text search box and dropdowns */
+        #search-box, #year-select, #sort-select {
             width: 100%;
             padding: 8px;
-            margin-top: 10px;
             box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 4px;
+        }
+
+        #search-box {
+            margin-top: 10px;
         }
 
         /* Label alignment for filter checkboxes */
@@ -218,10 +229,20 @@
     <div id="sidebar">
         <!-- Static header section containing filters -->
         <div class="sidebar-header">
-            <!-- Year filter dropdown -->
-            <select id="year-select" onchange="filterMapByYear()">
-                <option value="ALL">Show All Years</option>
-            </select>
+            <div class="dropdown-row">
+                <!-- Year filter dropdown -->
+                <select id="year-select" onchange="filterMapByYear()">
+                    <option value="ALL">Show All Years</option>
+                </select>
+
+                <!-- Sort dropdown -->
+                <select id="sort-select" onchange="sortActivities()">
+                    <option value="date">Sort: Date</option>
+                    <option value="distance">Sort: Distance</option>
+                    <option value="time">Sort: Time</option>
+                    <option value="pace">Sort: Pace</option>
+                </select>
+            </div>
             
             <!-- Text search for activities -->
             <input type="text" id="search-box" placeholder="Search activities..." onkeyup="debouncedFilterSidebar()">
@@ -723,6 +744,15 @@
             
             const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
             listItem.setAttribute('data-search', searchString);
+
+            // Add attributes for sorting
+            listItem.setAttribute('data-date', activity.start_date || activity.year);
+            listItem.setAttribute('data-distance', distanceMiles);
+            listItem.setAttribute('data-time', timeSecs);
+            // Speed for sorting in descending order, raw meters per second (m/s = m / s)
+            const rawDistanceMeters = raw.distance || 0;
+            const speedMs = timeSecs > 0 ? rawDistanceMeters / timeSecs : 0;
+            listItem.setAttribute('data-speed', speedMs);
             
             listItem.innerHTML = `
                 <h4 style="margin: 0 0 5px 0;">
@@ -795,12 +825,44 @@
             const group = L.featureGroup(allPolylines);
             map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
+
+        sortActivities();
         filterSidebar();
     }
 
     // ==========================================
-    // 5. FILTERING
+    // 5. FILTERING & SORTING
     // ==========================================
+
+    function sortActivities() {
+        const listContainer = document.getElementById('activity-list');
+        const items = Array.from(listContainer.querySelectorAll('.activity-item'));
+        const sortType = document.getElementById('sort-select').value;
+
+        items.sort((a, b) => {
+            if (sortType === 'date') {
+                const dateA = new Date(a.getAttribute('data-date'));
+                const dateB = new Date(b.getAttribute('data-date'));
+                return dateB - dateA; // Descending (newest first)
+            } else if (sortType === 'distance') {
+                const distA = parseFloat(a.getAttribute('data-distance')) || 0;
+                const distB = parseFloat(b.getAttribute('data-distance')) || 0;
+                return distB - distA; // Descending (longest first)
+            } else if (sortType === 'time') {
+                const timeA = parseFloat(a.getAttribute('data-time')) || 0;
+                const timeB = parseFloat(b.getAttribute('data-time')) || 0;
+                return timeB - timeA; // Descending (longest first)
+            } else if (sortType === 'pace') {
+                const speedA = parseFloat(a.getAttribute('data-speed')) || 0;
+                const speedB = parseFloat(b.getAttribute('data-speed')) || 0;
+                return speedB - speedA; // Descending speed (fastest pace first)
+            }
+            return 0;
+        });
+
+        // Re-append sorted items to the container
+        items.forEach(item => listContainer.appendChild(item));
+    }
 
     // Debounce utility to prevent UI blocking on every keystroke when typing in the search box
     function debounce(func, wait) {
