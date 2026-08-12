@@ -303,22 +303,22 @@
                         <label for="filter-cycling">Cycling</label>
                     </div>
                     <div class="filter-row">
-                        <input type="checkbox" id="filter-pavement" value="Pavement" onchange="resetDropdownAndFilter()">
+                        <input type="checkbox" id="filter-pavement" value="Pavement" checked onchange="resetDropdownAndFilter()">
                         <input type="color" id="color-pavement" value="#007fb6" onchange="updateSportColor('Pavement', this.value)">
                         <label for="filter-pavement">Pavement</label>
                     </div>
                     <div class="filter-row">
-                        <input type="checkbox" id="filter-dirt" value="Dirt" onchange="resetDropdownAndFilter()">
+                        <input type="checkbox" id="filter-dirt" value="Dirt" checked onchange="resetDropdownAndFilter()">
                         <input type="color" id="color-dirt" value="#8b4513" onchange="updateSportColor('Dirt', this.value)">
                         <label for="filter-dirt">Dirt</label>
                     </div>
                     <div class="filter-row">
-                        <input type="checkbox" id="filter-swim" value="Swim" onchange="resetDropdownAndFilter()">
+                        <input type="checkbox" id="filter-swim" value="Swim" checked onchange="resetDropdownAndFilter()">
                         <input type="color" id="color-swim" value="#00b300" onchange="updateSportColor('Swim', this.value)">
                         <label for="filter-swim">Swimming</label>
                     </div>
                     <div class="filter-row">
-                        <input type="checkbox" id="filter-other" value="Other" onchange="resetDropdownAndFilter()">
+                        <input type="checkbox" id="filter-other" value="Other" checked onchange="resetDropdownAndFilter()">
                         <input type="color" id="color-other" value="#666666" onchange="updateSportColor('Other', this.value)">
                         <label for="filter-other">Other</label>
                     </div>
@@ -615,6 +615,7 @@
         let start = 0;
         const chunkSize = 1000;
         let uniqueTypesSet = new Set();
+        let isFirstBatch = true;
 
         const specificListContainer = document.getElementById('specific-sport-list');
         specificListContainer.innerHTML = '';
@@ -622,7 +623,7 @@
         while (true) {
             // Sort directly in the database
             let query = _supabase.from('activities')
-                .select('*')
+                .select('id, name, type, start_date, year, coordinates, visited_tiles, average_heartrate, average_watts, total_elevation_gain, raw_data->distance, raw_data->moving_time, raw_data->elapsed_time')
                 .order('start_date', { ascending: false, nullsFirst: false })
                 .range(start, start + chunkSize - 1);
 
@@ -643,6 +644,14 @@
             // Immediately process and render the new batch of data
             processAndRenderBatch(data);
             
+            if (isFirstBatch) {
+                if (runningMapLines.length > 0) {
+                    const group = L.featureGroup(runningMapLines);
+                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                }
+                isFirstBatch = false;
+            }
+
             if (data.length < chunkSize) break;
             start += chunkSize;
         }
@@ -669,11 +678,6 @@
         // =========================================================
 
         drawTileGrid();
-
-        if (runningMapLines.length > 0) {
-            const group = L.featureGroup(runningMapLines);
-            map.fitBounds(group.getBounds(), { padding: [50, 50] });
-        }
     }
 
     // Extracted logic to process and render a single batch of activities
@@ -776,11 +780,11 @@
             runningMapLines.push(line);
 
             // Calculate Sidebar Metrics
-            const raw = activity.raw_data || {};
-            const distanceMiles = raw.distance ? (raw.distance / 1609.34) : 0;
+            const rawDistanceMeters = activity.distance || 0;
+            const distanceMiles = rawDistanceMeters ? (rawDistanceMeters / 1609.34) : 0;
             const distStr = distanceMiles > 0 ? distanceMiles.toFixed(2) + ' mi' : '--';
 
-            const timeSecs = raw.moving_time || raw.elapsed_time || 0;
+            const timeSecs = activity.moving_time || activity.elapsed_time || 0;
             const hours = Math.floor(timeSecs / 3600);
             const mins = Math.floor((timeSecs % 3600) / 60);
             const secs = timeSecs % 60;
@@ -802,7 +806,7 @@
                     const mph = distanceMiles / (timeSecs / 3600);
                     paceStr = `${mph.toFixed(1)} mph`;
                 } else if (activity.type.includes('Swim')) {
-                    const yds = raw.distance * 1.09361;
+                    const yds = rawDistanceMeters * 1.09361;
                     const pace100 = timeSecs / (yds / 100);
                     const pMins = Math.floor(pace100 / 60);
                     const pSecs = Math.floor(pace100 % 60);
@@ -830,7 +834,6 @@
             listItem.setAttribute('data-distance', distanceMiles);
             listItem.setAttribute('data-time', timeSecs);
             // Speed for sorting in descending order, raw meters per second (m/s = m / s)
-            const rawDistanceMeters = raw.distance || 0;
             const speedMs = timeSecs > 0 ? rawDistanceMeters / timeSecs : 0;
             listItem.setAttribute('data-speed', speedMs);
             
