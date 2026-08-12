@@ -63,7 +63,7 @@ def fetch_wellness_data(days_back=1400):
         print(f"Failed to fetch wellness data: {response.status_code}")
         return []
 
-def sync_steps_to_supabase(days_back=1400):
+def sync_steps_to_supabase(supabase_client, days_back=1400):
     wellness_records = fetch_wellness_data(days_back)
     print(f"Processing steps for the last {len(wellness_records)} wellness entries...")
     
