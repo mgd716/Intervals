@@ -790,6 +790,7 @@
         const query = document.getElementById('search-box').value.toLowerCase();
         
         const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+        const specificColor = document.getElementById('color-specific').value;
         
         const showCycling = document.getElementById('filter-cycling').checked;
         const showPavement = document.getElementById('filter-pavement').checked;
@@ -798,29 +799,52 @@
         const showOther = document.getElementById('filter-other').checked;
 
         // A. Filter Map Lines Individually
-        const specificColor = document.getElementById('color-specific').value; // <-- Get the custom color
-
         runningMapLines.forEach(line => {
             const config = getSportConfig(line.sportType);
             const type = line.sportType;
-            let matchesType = false;
+            const act = line.activityData;
+            const activityId = String(act.id);
+            
+            let isVisible = false;
 
-            if (specificSports.length > 0) {
-                matchesType = specificSports.includes(type);
-                if (matchesType) {
-                    line.setStyle({ color: specificColor }); // Paint it the specific list color
+            // Map Cluster Override (If a cluster is clicked, ONLY show those lines)
+            if (selectedActivityIds !== null) {
+                isVisible = selectedActivityIds.includes(activityId);
+                
+                // Maintain correct colors for the isolated lines
+                if (isVisible && specificSports.length > 0 && specificSports.includes(type)) {
+                     line.setStyle({ color: specificColor });
+                } else if (isVisible) {
+                     line.setStyle({ color: config.color });
                 }
             } else {
-                line.setStyle({ color: config.color }); // Restore original category color
+                // Normal Search & Checkbox Logic
+                // Generate the exact same search string used by the sidebar
+                const searchString = `${act.name} ${act.type} ${act.year}`.toLowerCase();
+                const matchesSearch = searchString.includes(query);
                 
-                if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
-                else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
-                else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
-                else if (type.includes('Swim')) matchesType = showSwim;
-                else matchesType = showOther;
+                let matchesType = false;
+
+                if (specificSports.length > 0) {
+                    matchesType = specificSports.includes(type);
+                    if (matchesType) {
+                        line.setStyle({ color: specificColor });
+                    }
+                } else {
+                    line.setStyle({ color: config.color });
+                    
+                    if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
+                    else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
+                    else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
+                    else if (type.includes('Swim')) matchesType = showSwim;
+                    else matchesType = showOther;
+                }
+                
+                isVisible = matchesSearch && matchesType;
             }
 
-            if (matchesType) {
+            // Physically add or remove the line from the map
+            if (isVisible) {
                 if (!config.group.hasLayer(line)) config.group.addLayer(line);
             } else {
                 if (config.group.hasLayer(line)) config.group.removeLayer(line);
