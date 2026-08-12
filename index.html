@@ -496,7 +496,15 @@
             if (data.length < chunkSize) break;
             start += chunkSize;
         }
-
+// =========================================================
+        // ADD THIS SORT STEP HERE (Newest First)
+        // =========================================================
+        activities.sort((a, b) => {
+            const dateA = new Date(a.start_date || a.year);
+            const dateB = new Date(b.start_date || b.year);
+            return dateB - dateA;
+        });
+        // =========================================================
         const allPolylines = [];
 
        activities.forEach(activity => {
