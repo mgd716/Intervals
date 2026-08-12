@@ -424,6 +424,7 @@
     // State variables for managing selected and highlighted lines
     let selectedActivityIds = null; 
     let highlightedLines = []; 
+    let activeActivityId = null; // NEW: Track the currently active activity highlight
 
     // State variables for start and end markers
     let currentStartMarker = null;
@@ -439,25 +440,30 @@
             currentEndMarker = null;
         }
     }
+    
+    // NEW HELPER: Reverts a line to its proper specific or category color
+    function resetLineStyle(l) {
+        if (!l || !l.activityData) return;
+        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+        const specificColor = document.getElementById('color-specific').value;
+        
+        const type = l.activityData.type;
+        let restoreColor = getSportConfig(type).color;
+        
+        // If this sport is selected in the specific list, restore to the custom color instead
+        if (specificSports.length > 0 && specificSports.includes(type)) {
+            restoreColor = specificColor;
+        }
+        
+        l.setStyle({ color: restoreColor, weight: 4, opacity: 0.30 });
+    }
 
    // Resets the map styling for any lines that were currently highlighted
    function clearMapHighlights() {
-        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
-        const specificColor = document.getElementById('color-specific').value;
-
         highlightedLines.forEach(l => {
-            if (l.activityData) {
-                const type = l.activityData.type;
-                let restoreColor = getSportConfig(type).color;
-                
-                // If this sport is selected in the specific list, restore to the custom color instead
-                if (specificSports.length > 0 && specificSports.includes(type)) {
-                    restoreColor = specificColor;
-                }
-                
-                // Revert to original unhighlighted state
-                l.setStyle({ color: restoreColor, weight: 4, opacity: 0.30 });
-            }
+            // NEW: Skip resetting if this line is the active clicked activity
+            if (activeActivityId && l.activityData.id === activeActivityId) return;
+            resetLineStyle(l);
         });
         highlightedLines = []; 
     }
@@ -468,6 +474,13 @@
         const cluster = getOverlappingLines(e.latlng, 15);
         
         clearStartEndMarkers();
+        
+        // NEW: Unhighlight previously active line when map is clicked
+        if (activeActivityId) {
+            const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
+            resetLineStyle(prevLine);
+            activeActivityId = null;
+        }
 
         if (cluster.length > 0) {
             // Isolate map to show only clicked activities
@@ -492,8 +505,9 @@
         // Apply the new visual state
         filterSidebar();
     });
+    
     function getSportConfig(type) {
-        // NEW: Safety guard prevents the map from crashing if an activity has no type
+        // Safety guard prevents the map from crashing if an activity has no type
         if (!type) type = 'Other'; 
 
         if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
@@ -503,6 +517,7 @@
         
         return { color: document.getElementById('color-other').value, group: window.sportGroups.Other };
     }
+    
     // Maps a specific sport type string to its corresponding category color and layer group
    function getSportIcon(type) {
        if (!type) type = 'Other';
@@ -804,6 +819,13 @@
                 const cluster = getOverlappingLines(e.latlng, 15);
                 
                 clearStartEndMarkers();
+                
+                // NEW: Unhighlight previously active line when map line is directly clicked
+                if (activeActivityId) {
+                    const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
+                    resetLineStyle(prevLine);
+                    activeActivityId = null;
+                }
 
                 if (cluster.length > 0) {
                     selectedActivityIds = cluster.map(l => String(l.activityData.id));
@@ -926,6 +948,15 @@
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
                 clearStartEndMarkers();
+                
+                // NEW: Revert the style of the previously active line (if any)
+                if (activeActivityId) {
+                    const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
+                    resetLineStyle(prevLine);
+                }
+            
+                // NEW: Set this activity as the actively selected one
+                activeActivityId = activity.id;
 
                 map.fitBounds(line.getBounds(), { padding: [50, 50] });
                 
@@ -946,6 +977,10 @@
                     currentStartMarker = L.marker(startCoord, { icon: startIcon, interactive: false }).addTo(map);
                     currentEndMarker = L.marker(endCoord, { icon: endIcon, interactive: false }).addTo(map);
                 }
+                
+                // NEW: Force the highlight to stay active
+                line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                line.bringToFront();
             };
             
             // Hover to highlight on map
@@ -955,8 +990,9 @@
             });
 
             listItem.addEventListener('mouseleave', () => {
-                const currentConfig = getSportConfig(activity.type);
-                line.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.3 });
+                // NEW: If this is the active activity, don't remove the highlight!
+                if (activeActivityId === activity.id) return;
+                resetLineStyle(line);
             });
             fragment.appendChild(listItem);
         });
@@ -1096,19 +1132,28 @@
             const config = getSportConfig(line.sportType);
             const type = line.sportType;
             const act = line.activityData;
-            const activityId = String(act.id);
+            const activityId = act.id;
             
             let isVisible = false;
 
+            // NEW: Unified helper to apply style, respecting the active highlight lock
+            const applyStyle = (baseColor) => {
+                if (activeActivityId === activityId) {
+                    line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                } else {
+                    line.setStyle({ color: baseColor, weight: 4, opacity: 0.3 });
+                }
+            };
+
             // Map Cluster Override (If a cluster is clicked, ONLY show those lines)
             if (selectedActivityIds !== null) {
-                isVisible = selectedActivityIds.includes(activityId);
+                isVisible = selectedActivityIds.includes(String(activityId));
                 
                 // Maintain correct colors for the isolated lines
                 if (isVisible && specificSports.length > 0 && specificSports.includes(type)) {
-                     line.setStyle({ color: specificColor });
+                     applyStyle(specificColor);
                 } else if (isVisible) {
-                     line.setStyle({ color: config.color });
+                     applyStyle(config.color);
                 }
             } else {
                 // Normal Search & Checkbox Logic
@@ -1121,13 +1166,9 @@
                 if (specificSports.length > 0) {
                     // Check if the exact specific sport matches
                     matchesType = specificSports.includes(type);
-                    if (matchesType) {
-                        line.setStyle({ color: specificColor });
-                    }
+                    if (matchesType) applyStyle(specificColor);
                 } else {
-                    // Revert to broad category coloring
-                    line.setStyle({ color: config.color });
-                    
+                    applyStyle(config.color);
                     // Check against broad category filters
                     matchesType = DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther);
                 }
@@ -1202,7 +1243,8 @@
             else if (baseType === 'Swim' && t.includes('Swim')) match = true;
             else if (baseType === 'Other' && !t.includes('Ride') && !t.includes('VirtualRide') && !t.includes('EBike') && t !== 'Run' && t !== 'Walk' && t !== 'Hike' && t !== 'TrailRun' && !t.includes('Swim')) match = true;
             
-            if (match) {
+            // NEW: Ensure we don't accidentally override the currently active yellow highlight
+            if (match && activeActivityId !== line.activityData.id) {
                 line.setStyle({ color: newColor }); 
             }
         });
@@ -1213,7 +1255,8 @@
         
         if (specificSports.length > 0) {
             runningMapLines.forEach(line => {
-                if (specificSports.includes(line.sportType)) {
+                // NEW: Ensure we don't accidentally override the currently active yellow highlight
+                if (specificSports.includes(line.sportType) && activeActivityId !== line.activityData.id) {
                     line.setStyle({ color: newColor });
                 }
             });
