@@ -236,7 +236,11 @@
                 <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
                 
                 <!-- NEW: Scrollable Specific Sport Box -->
-                <div style="width: 100%; margin-bottom: 5px;"><strong>Specific Sport Override</strong></div>
+                <div style="width: 100%; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                    <strong>Specific Sport Override</strong>
+                    <!-- The new master color picker for specific sports -->
+                    <input type="color" id="color-specific" value="#e83e8c" onchange="updateSpecificSportColor(this.value)" style="border: none; width: 20px; height: 24px; padding: 0; cursor: pointer; background: transparent;">
+                </div>
                 <div id="specific-sport-list" style="width: 100%; max-height: 120px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; padding: 5px; background: #fff; box-sizing: border-box; font-size: 12px;">
                     <!-- JavaScript will inject the checkboxes here -->
                 </div>
@@ -300,11 +304,21 @@
     let activeHoverLines = [];
     let highlightedLines = []; 
 
-    function clearMapHighlights() {
+   function clearMapHighlights() {
+        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+        const specificColor = document.getElementById('color-specific').value;
+
         highlightedLines.forEach(l => {
             if (l.activityData) {
-                const currentConfig = getSportConfig(l.activityData.type);
-                l.setStyle({ color: currentConfig.color, weight: 4, opacity: 0.30 });
+                const type = l.activityData.type;
+                let restoreColor = getSportConfig(type).color;
+                
+                // If this sport is selected in the specific list, restore to the custom color instead
+                if (specificSports.length > 0 && specificSports.includes(type)) {
+                    restoreColor = specificColor;
+                }
+                
+                l.setStyle({ color: restoreColor, weight: 4, opacity: 0.30 });
             }
         });
         highlightedLines = []; 
@@ -773,6 +787,8 @@
         const showOther = document.getElementById('filter-other').checked;
 
         // A. Filter Map Lines Individually
+        const specificColor = document.getElementById('color-specific').value; // <-- Get the custom color
+
         runningMapLines.forEach(line => {
             const config = getSportConfig(line.sportType);
             const type = line.sportType;
@@ -780,7 +796,12 @@
 
             if (specificSports.length > 0) {
                 matchesType = specificSports.includes(type);
+                if (matchesType) {
+                    line.setStyle({ color: specificColor }); // Paint it the specific list color
+                }
             } else {
+                line.setStyle({ color: config.color }); // Restore original category color
+                
                 if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) matchesType = showCycling;
                 else if (type === 'Run' || type === 'Walk') matchesType = showPavement;
                 else if (type === 'Hike' || type === 'TrailRun') matchesType = showDirt;
@@ -870,6 +891,18 @@
                 line.setStyle({ color: newColor }); 
             }
         });
+    }
+
+    function updateSpecificSportColor(newColor) {
+        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+        
+        if (specificSports.length > 0) {
+            runningMapLines.forEach(line => {
+                if (specificSports.includes(line.sportType)) {
+                    line.setStyle({ color: newColor });
+                }
+            });
+        }
     }
 </script>
 
