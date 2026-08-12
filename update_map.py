@@ -48,7 +48,7 @@ def get_tile(lat, lon, zoom):
     ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
     return f"{zoom}_{xtile}_{ytile}"
 
-def fetch_wellness_data(days_back=14):
+def fetch_wellness_data(days_back=1400):
     """Fetches daily wellness records (including steps) from Intervals.icu"""
     base_url = "https://intervals.icu/"
     today = datetime.date.today()
@@ -63,7 +63,7 @@ def fetch_wellness_data(days_back=14):
         print(f"Failed to fetch wellness data: {response.status_code}")
         return []
 
-def sync_steps_to_supabase(days_back=14):
+def sync_steps_to_supabase(days_back=1400):
     wellness_records = fetch_wellness_data(days_back)
     print(f"Processing steps for the last {len(wellness_records)} wellness entries...")
     
