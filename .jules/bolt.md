@@ -1,3 +1,5 @@
-## 2024-05-24 - [Vanilla JS Search Filtering]
-**Learning:** Attaching heavy O(N) DOM and Leaflet map filtering directly to `keyup` events without debouncing causes severe typing latency as the number of activities grows.
-**Action:** Always wrap frequent event handlers (like search inputs or scroll events) that trigger heavy computations or DOM updates in a debounce or throttle function.
+## 2023-10-28 - Bulk Upserts for Supabase
+
+**Learning:** When dealing with multiple upserts to a Supabase table within a loop, batching them into a single array and using a bulk `upsert` call significantly reduces network overhead and improves performance, especially when avoiding rate limiters designed for external APIs.
+
+**Action:** Whenever iterating through a dataset to insert or update records in a database, aggregate the records into a batch array first and perform a single bulk operation if the database client supports it.
