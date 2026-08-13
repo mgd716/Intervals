@@ -813,36 +813,6 @@
             line.on('mouseout', function () {
                 clearMapHighlights();
             });
-
-            // DESKTOP LINE CLICK FIX
-            line.on('click', function (e) {
-                const cluster = getOverlappingLines(e.latlng, 15);
-                
-                clearStartEndMarkers();
-                
-                // NEW: Unhighlight previously active line when map line is directly clicked
-                if (activeActivityId) {
-                    const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
-                    resetLineStyle(prevLine);
-                    activeActivityId = null;
-                }
-
-                if (cluster.length > 0) {
-                    selectedActivityIds = cluster.map(l => String(l.activityData.id));
-                    document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
-                    
-                    document.getElementById('activity-list').scrollTop = 0;
-                    
-                    document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
-                    selectedActivityIds.forEach(id => {
-                        const card = document.getElementById(`sidebar-item-${id}`);
-                        if (card) card.querySelector('.extended-stats').style.display = 'block';
-                    });
-                    
-                    filterSidebar();
-                }
-                L.DomEvent.stopPropagation(e); 
-            });
                  
             runningMapLines.push(line);
 
