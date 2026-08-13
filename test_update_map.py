@@ -136,3 +136,22 @@ def test_fetch_gps_stream_not_a_list():
 
         result = fetch_gps_stream("123")
         assert result is None
+
+@pytest.mark.parametrize("lat, lon, zoom, expected", [
+    # Null Island
+    (0.0, 0.0, 0, "0_0_0"),
+    (0.0, 0.0, 14, "14_8192_8192"),
+    # San Francisco approx
+    (37.7749, -122.4194, 14, "14_2620_6332"),
+    # London approx
+    (51.5074, -0.1278, 14, "14_8186_5448"),
+    # Sydney approx
+    (-33.8688, 151.2093, 14, "14_15073_9831"),
+    # Edge cases - Web Mercator max/min limits
+    # Max latitude is approximately 85.0511
+    (85.0511, 180.0, 14, "14_16384_0"),
+    (-85.0511, -180.0, 14, "14_0_16383"),
+])
+def test_get_tile(lat, lon, zoom, expected):
+    from update_map import get_tile
+    assert get_tile(lat, lon, zoom) == expected
