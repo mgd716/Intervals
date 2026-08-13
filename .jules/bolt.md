@@ -23,3 +23,7 @@
 **Learning:** When generating multiple map tiles per coordinate, repeatedly calling a function that performs expensive trigonometric calculations (like `math.asinh(math.tan())`) introduces significant overhead. Precomputing constants and computing the latitude-dependent base formula once per coordinate, then formatting the final strings, provides a measurable speedup (e.g. ~30% faster in our benchmark).
 
 **Action:** When a calculation is required multiple times within a tight loop and shares common expensive sub-calculations, inline the common parts and precompute constants outside the loop to optimize performance.
+
+## 2026-08-13 - [Supabase Query Optimization Correction]
+ **Learning:** [Querying native, top-level columns in PostgreSQL (Supabase) is significantly faster and results in a smaller/similar payload compared to using JSONB extraction operators (e.g., `raw_data->distance`) at query time. The previous optimization that extracted from JSONB missed that these fields were already top-level columns.]
+ **Action:** [Always query native columns when they are available instead of extracting values from a JSONB column on the fly. Check the schema/ingestion script first to confirm if a field is already mapped to a native column.]
