@@ -381,6 +381,17 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+    // Helper to sanitize untrusted input to prevent XSS
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // ==========================================
     // 1. CONFIGURATION
     // ==========================================
@@ -729,7 +740,9 @@
             lbl.style.marginBottom = '4px';
             lbl.style.cursor = 'pointer';
             
-            lbl.innerHTML = `<input type="checkbox" class="specific-type-cb" value="${type}" onchange="clearCheckboxesAndFilter()"> ${type}`;
+            const safeType = escapeHTML(type);
+            // Safe to inject because we just escaped 'type'
+            lbl.innerHTML = `<input type="checkbox" class="specific-type-cb" value="${safeType}" onchange="clearCheckboxesAndFilter()"> ${safeType}`;
             specificListContainer.appendChild(lbl);
         });
         // =========================================================
@@ -812,13 +825,17 @@
         listItem.setAttribute('data-time', metrics.timeSecs);
         listItem.setAttribute('data-speed', metrics.speedMs);
 
+        const safeId = escapeHTML(activity.id);
+        const safeName = escapeHTML(activity.name);
+        const safeType = escapeHTML(activity.type);
+
         listItem.innerHTML = `
             <h4 style="margin: 0 0 5px 0;">
-                <a href="https://intervals.icu/activities/${activity.id}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
-                    ${activity.name} ↗
+                <a href="https://intervals.icu/activities/${safeId}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
+                    ${safeName} ↗
                 </a>
             </h4>
-            <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${getSportIcon(activity.type)} ${activity.type} | ${dateStr}</p>
+            <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${getSportIcon(activity.type)} ${safeType} | ${dateStr}</p>
 
             <div class="activity-stats">
                 <div class="stat-box">
@@ -900,10 +917,12 @@
                     if (index < 5) {
                         const act = l.activityData;
                         const dStr = act.start_date ? new Date(act.start_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' }) : act.year;
+                        const safeActId = escapeHTML(act.id);
+                        const safeActName = escapeHTML(act.name);
                         
                         html += `<div style="margin-bottom: 3px;">
-                                    <a href="https://intervals.icu/activities/${act.id}" target="_blank" style="text-decoration: none; color: #333; font-size: 13px;">
-                                        ${act.name} (${dStr})
+                                    <a href="https://intervals.icu/activities/${safeActId}" target="_blank" style="text-decoration: none; color: #333; font-size: 13px;">
+                                        ${safeActName} (${dStr})
                                     </a>
                                  </div>`;
                     }
