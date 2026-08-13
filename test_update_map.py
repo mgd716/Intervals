@@ -151,7 +151,21 @@ def test_fetch_gps_stream_not_a_list():
     # Max latitude is approximately 85.0511
     (85.0511, 180.0, 14, "14_16384_0"),
     (-85.0511, -180.0, 14, "14_0_16383"),
+    # Out of bounds coordinates (documenting current mathematical behavior)
+    (91.0, 0.0, 14, "14_8192_20555"),
+    (-91.0, 0.0, 14, "14_8192_-4171"),
+    (0.0, 181.0, 14, "14_16429_8192"),
+    (0.0, -181.0, 14, "14_-45_8192"),
 ])
 def test_get_tile(lat, lon, zoom, expected):
     from update_map import get_tile
     assert get_tile(lat, lon, zoom) == expected
+
+def test_get_tile_type_errors():
+    from update_map import get_tile
+    with pytest.raises(TypeError):
+        get_tile(None, 0.0, 14)
+    with pytest.raises(TypeError):
+        get_tile(0.0, None, 14)
+    with pytest.raises(TypeError):
+        get_tile("0.0", "0.0", "14")
