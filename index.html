@@ -739,6 +739,124 @@
     }
 
     // Extracted logic to process and render a single batch of activities
+
+    function createMapLine(activity, config) {
+        const line = L.polyline(activity.coordinates, {
+            color: config.color,
+            weight: 4,
+            opacity: 0.3,
+            smoothFactor: 1
+        });
+        line.sportType = activity.type;
+        line.activityData = activity;
+        return line;
+    }
+
+    function calculateActivityMetrics(activity) {
+        const rawDistanceMeters = activity.distance || 0;
+        const distanceMiles = rawDistanceMeters ? (rawDistanceMeters / 1609.34) : 0;
+        const distStr = distanceMiles > 0 ? distanceMiles.toFixed(2) + ' mi' : '--';
+
+        const timeSecs = activity.moving_time || activity.elapsed_time || 0;
+        const hours = Math.floor(timeSecs / 3600);
+        const mins = Math.floor((timeSecs % 3600) / 60);
+        const secs = timeSecs % 60;
+        let timeStr = '--';
+        if (timeSecs > 0) {
+            timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${secs}s`;
+        }
+
+        const hr = activity.average_heartrate > 0 ? Math.round(activity.average_heartrate) + ' bpm' : '--';
+        const power = activity.average_watts > 0 ? Math.round(activity.average_watts) + ' w' : '--';
+        const elev = activity.total_elevation_gain > 0 ? Math.round(activity.total_elevation_gain * 3.28084) + ' ft' : '--';
+
+        let paceStr = '--';
+        let paceLabel = 'Pace';
+
+        if (distanceMiles > 0 && timeSecs > 0) {
+            if (activity.type.includes('Ride') || activity.type.includes('VirtualRide')) {
+                paceLabel = 'Speed';
+                const mph = distanceMiles / (timeSecs / 3600);
+                paceStr = `${mph.toFixed(1)} mph`;
+            } else if (activity.type.includes('Swim')) {
+                const yds = rawDistanceMeters * 1.09361;
+                const pace100 = timeSecs / (yds / 100);
+                const pMins = Math.floor(pace100 / 60);
+                const pSecs = Math.floor(pace100 % 60);
+                paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /100y`;
+            } else {
+                const paceSecs = timeSecs / distanceMiles;
+                const pMins = Math.floor(paceSecs / 60);
+                const pSecs = Math.floor(paceSecs % 60);
+                paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /mi`;
+            }
+        }
+
+        // Speed for sorting in descending order, raw meters per second (m/s = m / s)
+        const speedMs = timeSecs > 0 ? rawDistanceMeters / timeSecs : 0;
+
+        return { rawDistanceMeters, distanceMiles, distStr, timeSecs, timeStr, hr, power, elev, paceStr, paceLabel, speedMs };
+    }
+
+    function createSidebarItem(activity, dateStr, metrics) {
+        const listItem = document.createElement('div');
+        listItem.className = 'activity-item';
+        listItem.id = `sidebar-item-${activity.id}`;
+        listItem.setAttribute('data-type', activity.type);
+        listItem.setAttribute('data-id', String(activity.id));
+
+        const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
+        listItem.setAttribute('data-search', searchString);
+
+        listItem.setAttribute('data-date', activity.start_date || activity.year);
+        listItem.setAttribute('data-distance', metrics.distanceMiles);
+        listItem.setAttribute('data-time', metrics.timeSecs);
+        listItem.setAttribute('data-speed', metrics.speedMs);
+
+        listItem.innerHTML = `
+            <h4 style="margin: 0 0 5px 0;">
+                <a href="https://intervals.icu/activities/${activity.id}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
+                    ${activity.name} ↗
+                </a>
+            </h4>
+            <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${getSportIcon(activity.type)} ${activity.type} | ${dateStr}</p>
+
+            <div class="activity-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Distance</span>
+                    <strong>${metrics.distStr}</strong>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Time</span>
+                    <strong>${metrics.timeStr}</strong>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">${metrics.paceLabel}</span>
+                    <strong>${metrics.paceStr}</strong>
+                </div>
+            </div>
+
+            <div class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
+                <div class="activity-stats">
+                    <div class="stat-box">
+                        <span class="stat-label">Avg HR</span>
+                        <strong>${metrics.hr}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Avg Power</span>
+                        <strong>${metrics.power}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Elevation</span>
+                        <strong>${metrics.elev}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return listItem;
+    }
+
     function processAndRenderBatch(activities) {
         const listContainer = document.getElementById('activity-list');
         const fragment = document.createDocumentFragment();
@@ -752,14 +870,8 @@
             }
 
             const config = getSportConfig(activity.type);
-            const line = L.polyline(activity.coordinates, {
-                color: config.color,
-                weight: 4,          
-                opacity: 0.3,      
-                smoothFactor: 1
-            });
-           
-            line.sportType = activity.type; 
+            const line = createMapLine(activity, config);
+            line.addTo(config.group);
 
             let dateStr = activity.year;
             if (activity.start_date) {
@@ -772,9 +884,6 @@
                 });
             }
 
-            line.activityData = activity;
-            line.addTo(config.group);
-            
             // CLUSTER HOVER
             line.on('mouseover', function (e) {
                 clearMapHighlights(); 
@@ -816,104 +925,8 @@
                  
             runningMapLines.push(line);
 
-            // Calculate Sidebar Metrics
-            const rawDistanceMeters = activity.distance || 0;
-            const distanceMiles = rawDistanceMeters ? (rawDistanceMeters / 1609.34) : 0;
-            const distStr = distanceMiles > 0 ? distanceMiles.toFixed(2) + ' mi' : '--';
-
-            const timeSecs = activity.moving_time || activity.elapsed_time || 0;
-            const hours = Math.floor(timeSecs / 3600);
-            const mins = Math.floor((timeSecs % 3600) / 60);
-            const secs = timeSecs % 60;
-            const hr = activity.average_heartrate > 0 ? Math.round(activity.average_heartrate) + ' bpm' : '--';
-            const power = activity.average_watts > 0 ? Math.round(activity.average_watts) + ' w' : '--';
-            const elev = activity.total_elevation_gain > 0 ? Math.round(activity.total_elevation_gain * 3.28084) + ' ft' : '--';
-            
-            let timeStr = '--';
-            if (timeSecs > 0) {
-                timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${secs}s`;
-            }
-
-            let paceStr = '--';
-            let paceLabel = 'Pace';
-            
-            if (distanceMiles > 0 && timeSecs > 0) {
-                if (activity.type.includes('Ride') || activity.type.includes('VirtualRide')) {
-                    paceLabel = 'Speed';
-                    const mph = distanceMiles / (timeSecs / 3600);
-                    paceStr = `${mph.toFixed(1)} mph`;
-                } else if (activity.type.includes('Swim')) {
-                    const yds = rawDistanceMeters * 1.09361;
-                    const pace100 = timeSecs / (yds / 100);
-                    const pMins = Math.floor(pace100 / 60);
-                    const pSecs = Math.floor(pace100 % 60);
-                    paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /100y`;
-                } else {
-                    const paceSecs = timeSecs / distanceMiles;
-                    const pMins = Math.floor(paceSecs / 60);
-                    const pSecs = Math.floor(paceSecs % 60);
-                    paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /mi`;
-                }
-            }
-
-            // Build Sidebar Item
-            const listItem = document.createElement('div');
-            listItem.className = 'activity-item';
-            listItem.id = `sidebar-item-${activity.id}`; 
-            listItem.setAttribute('data-type', activity.type);
-            listItem.setAttribute('data-id', String(activity.id)); 
-            
-            const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
-            listItem.setAttribute('data-search', searchString);
-
-            // Add attributes for sorting
-            listItem.setAttribute('data-date', activity.start_date || activity.year);
-            listItem.setAttribute('data-distance', distanceMiles);
-            listItem.setAttribute('data-time', timeSecs);
-            // Speed for sorting in descending order, raw meters per second (m/s = m / s)
-            const speedMs = timeSecs > 0 ? rawDistanceMeters / timeSecs : 0;
-            listItem.setAttribute('data-speed', speedMs);
-            
-            listItem.innerHTML = `
-                <h4 style="margin: 0 0 5px 0;">
-                    <a href="https://intervals.icu/activities/${activity.id}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
-                        ${activity.name} ↗
-                    </a>
-                </h4>
-                <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${getSportIcon(activity.type)} ${activity.type} | ${dateStr}</p>
-                
-                <div class="activity-stats">
-                    <div class="stat-box">
-                        <span class="stat-label">Distance</span>
-                        <strong>${distStr}</strong>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-label">Time</span>
-                        <strong>${timeStr}</strong>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-label">${paceLabel}</span>
-                        <strong>${paceStr}</strong>
-                    </div>
-                </div>
-
-                <div class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
-                    <div class="activity-stats">
-                        <div class="stat-box">
-                            <span class="stat-label">Avg HR</span>
-                            <strong>${hr}</strong>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Avg Power</span>
-                            <strong>${power}</strong>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Elevation</span>
-                            <strong>${elev}</strong>
-                        </div>
-                    </div>
-                </div>
-            `;
+            const metrics = calculateActivityMetrics(activity);
+            const listItem = createSidebarItem(activity, dateStr, metrics);
 
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
