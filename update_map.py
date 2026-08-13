@@ -5,6 +5,7 @@ import math
 import datetime
 from requests.auth import HTTPBasicAuth
 from supabase import create_client, Client
+from typing import Dict, Any, List
 
 # ==================== CONFIGURATION ====================
 ATHLETE_ID = os.getenv("INTERVALS_ATHLETE_ID")
@@ -62,6 +63,54 @@ def fetch_wellness_data(days_back=14):
     else:
         print(f"Failed to fetch wellness data: {response.status_code}")
         return []
+
+def process_activity(act: Dict[str, Any]) -> Dict[str, Any]:
+    """Processes a single activity and returns the database record."""
+    act_id = str(act.get("id"))
+    act_type = act.get("type", "Other")
+    act_name = act.get("name", f"Activity {act_id}")
+    act_date = act.get("start_date_local", "")
+    act_year = int(act_date.split("-")[0]) if act_date else 0
+
+    coordinates = fetch_gps_stream(act_id)
+
+    # If there's no GPS stream (indoor/virtual/gym), default to an empty list
+    if not coordinates:
+        coordinates = []
+        activity_tiles = []
+    else:
+        # Calculate unique tiles ONLY if coordinates exist
+        activity_tiles = set()
+        for lat, lng in coordinates:
+            activity_tiles.add(get_tile(lat, lng, 14)) # Squadrat
+            activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
+        activity_tiles = list(activity_tiles)
+
+    return {
+        "id": act_id,
+        "type": act_type,
+        "name": act_name,
+        "year": act_year,
+        "start_date": act.get("start_date_local", ""),
+        "distance": act.get("distance", 0.0),
+        "moving_time": act.get("moving_time", 0),
+        "elapsed_time": act.get("elapsed_time", 0),
+        "calories": act.get("calories", 0),
+        "total_elevation_gain": act.get("total_elevation_gain", 0.0),
+        "max_elevation": act.get("elev_high", 0.0),
+        "tss": act.get("tss", 0.0),
+
+        # Performance Metrics
+        "average_heartrate": act.get("average_heartrate", 0.0),
+        "max_heartrate": act.get("max_heartrate", 0.0),
+        "average_watts": act.get("average_watts") or act.get("icu_weighted_avg_watts", 0.0),
+        "average_cadence": act.get("average_cadence", 0.0),
+        "work": act.get("work", 0.0),
+
+        "coordinates": coordinates,
+        "raw_data": act,
+        "visited_tiles": activity_tiles
+    }
 
 def sync_steps_to_supabase(supabase_client, days_back=14):
     wellness_records = fetch_wellness_data(days_back)
@@ -130,54 +179,12 @@ def main():
             if act_id in existing_ids:
                 continue
                 
-            act_type = act.get("type", "Other")
             act_name = act.get("name", f"Activity {act_id}")
-            act_date = act.get("start_date_local", "")
-            act_year = int(act_date.split("-")[0]) if act_date else 0
-                
             print(f"[{idx+1}/{len(activities)}] Processing: {act_name}")
-            coordinates = fetch_gps_stream(act_id)
             
-            # If there's no GPS stream (indoor/virtual/gym), default to an empty list
-            if not coordinates:
-                coordinates = []
-                activity_tiles = []
-            else:
-                # Calculate unique tiles ONLY if coordinates exist
-                activity_tiles = set()
-                for lat, lng in coordinates:
-                    activity_tiles.add(get_tile(lat, lng, 14)) # Squadrat
-                    activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
-                activity_tiles = list(activity_tiles)
-
+            processed_activity = process_activity(act)
+            activities_to_upsert.append(processed_activity)
             new_downloads += 1
-            
-            # Append to batch list instead of individual upserts
-            activities_to_upsert.append({
-                "id": act_id,
-                "type": act_type,
-                "name": act_name,
-                "year": act_year,
-                "start_date": act.get("start_date_local", ""),
-                "distance": act.get("distance", 0.0),
-                "moving_time": act.get("moving_time", 0),
-                "elapsed_time": act.get("elapsed_time", 0),
-                "calories": act.get("calories", 0),
-                "total_elevation_gain": act.get("total_elevation_gain", 0.0),
-                "max_elevation": act.get("elev_high", 0.0),
-                "tss": act.get("tss", 0.0),
-                
-                # Performance Metrics
-                "average_heartrate": act.get("average_heartrate", 0.0),
-                "max_heartrate": act.get("max_heartrate", 0.0),
-                "average_watts": act.get("average_watts") or act.get("icu_weighted_avg_watts", 0.0),
-                "average_cadence": act.get("average_cadence", 0.0),
-                "work": act.get("work", 0.0),
-                
-                "coordinates": coordinates,
-                "raw_data": act,
-                "visited_tiles": activity_tiles
-            })
 
         if activities_to_upsert:
             supabase.table("activities").upsert(activities_to_upsert).execute()
