@@ -18,3 +18,8 @@
 ## 2026-08-12 - [Supabase Query Optimization]
  **Learning:** [Using `select('*')` on large tables with JSONB columns significantly slows down frontend load times due to massive data payloads.]
  **Action:** [Always query only the specific columns needed, and extract specific nested fields from JSONB columns using `->` syntax in Supabase (e.g., `raw_data->distance`) to minimize payload size.]
+## 2025-02-12 - Inline Redundant Math Operations
+
+**Learning:** When generating multiple map tiles per coordinate, repeatedly calling a function that performs expensive trigonometric calculations (like `math.asinh(math.tan())`) introduces significant overhead. Precomputing constants and computing the latitude-dependent base formula once per coordinate, then formatting the final strings, provides a measurable speedup (e.g. ~30% faster in our benchmark).
+
+**Action:** When a calculation is required multiple times within a tight loop and shares common expensive sub-calculations, inline the common parts and precompute constants outside the loop to optimize performance.

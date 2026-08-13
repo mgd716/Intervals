@@ -81,9 +81,20 @@ def process_activity(act: Dict[str, Any]) -> Dict[str, Any]:
     else:
         # Calculate unique tiles ONLY if coordinates exist
         activity_tiles = set()
+
+        # Precompute constants and zoom factors to optimize the loop
+        n14 = 2.0 ** 14
+        n17 = 2.0 ** 17
+        pi = math.pi
+
         for lat, lng in coordinates:
-            activity_tiles.add(get_tile(lat, lng, 14)) # Squadrat
-            activity_tiles.add(get_tile(lat, lng, 17)) # Squadratinho
+            lat_rad = math.radians(lat)
+            xtile_base = (lng + 180.0) / 360.0
+            ytile_base = (1.0 - math.asinh(math.tan(lat_rad)) / pi) / 2.0
+
+            activity_tiles.add(f"14_{int(xtile_base * n14)}_{int(ytile_base * n14)}") # Squadrat
+            activity_tiles.add(f"17_{int(xtile_base * n17)}_{int(ytile_base * n17)}") # Squadratinho
+
         activity_tiles = list(activity_tiles)
 
     return {
