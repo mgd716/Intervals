@@ -19,7 +19,8 @@ def fetch_activities():
     base_url = "https://intervals.icu/"
     endpoint = f"api/v1/athlete/{ATHLETE_ID}/activities"
     params = {"oldest": "2010-01-01", "newest": "2030-01-01"}
-    response = requests.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY))
+    # Security: Added timeout to prevent infinite hangs and DoS risks
+    response = requests.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
     if response.status_code != 200:
         raise Exception(f"Failed to fetch activities list: {response.status_code}")
     return response.json()
@@ -28,7 +29,8 @@ def fetch_gps_stream(activity_id):
     base_url = "https://intervals.icu/"
     endpoint = f"api/v1/activity/{activity_id}/streams.json"
     params = {"types": "latlng"}
-    response = requests.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY))
+    # Security: Added timeout to prevent infinite hangs and DoS risks
+    response = requests.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
     
     if response.status_code == 200:
         streams = response.json()
@@ -56,7 +58,8 @@ def fetch_wellness_data(days_back=14):
     oldest = today - datetime.timedelta(days=days_back)
     
     endpoint = f"api/v1/athlete/{ATHLETE_ID}/wellness?oldest={oldest}&newest={today}"
-    response = requests.get(base_url + endpoint, auth=HTTPBasicAuth('API_KEY', API_KEY))
+    # Security: Added timeout to prevent infinite hangs and DoS risks
+    response = requests.get(base_url + endpoint, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
     
     if response.status_code == 200:
         return response.json()
