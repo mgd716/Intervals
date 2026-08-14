@@ -145,7 +145,8 @@
         #sort-dir-btn:focus-visible,
         #filter-toggle-btn:focus-visible,
         input[type="color"]:focus-visible,
-        input[type="checkbox"]:focus-visible {
+        input[type="checkbox"]:focus-visible,
+        .activity-item:focus-visible {
             outline: 2px solid #0066ff;
             outline-offset: 2px;
         }
@@ -830,6 +831,8 @@
         listItem.id = `sidebar-item-${activity.id}`;
         listItem.setAttribute('data-type', activity.type);
         listItem.setAttribute('data-id', String(activity.id));
+        listItem.setAttribute('role', 'button');
+        listItem.setAttribute('tabindex', '0');
 
         const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
         listItem.setAttribute('data-search', searchString);
@@ -1001,6 +1004,14 @@
                 line.bringToFront();
             };
             
+            // Keyboard event listener for accessibility
+            listItem.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    listItem.click();
+                }
+            });
+
             // Hover to highlight on map
             listItem.addEventListener('mouseenter', () => {
                 line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
