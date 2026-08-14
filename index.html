@@ -957,6 +957,9 @@
                  
             runningMapLines.push(line);
 
+            // Pre-calculate search string to avoid re-evaluating in loops during filtering
+            activity.searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
+
             const metrics = calculateActivityMetrics(activity);
             const listItem = createSidebarItem(activity, dateStr, metrics);
 
@@ -1142,9 +1145,26 @@
         const showSwim = document.getElementById('filter-swim').checked;
         const showOther = document.getElementById('filter-other').checked;
 
+        // Pre-fetch colors to avoid querying the DOM inside the loop
+        const colorCycling = document.getElementById('color-cycling').value;
+        const colorPavement = document.getElementById('color-pavement').value;
+        const colorDirt = document.getElementById('color-dirt').value;
+        const colorSwim = document.getElementById('color-swim').value;
+        const colorOther = document.getElementById('color-other').value;
+
+        // Local helper to avoid querying the DOM inside the loop
+        function getFastSportConfig(type) {
+            if (!type) type = 'Other';
+            if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: colorCycling, group: window.sportGroups.Cycling };
+            if (type === 'Run' || type === 'Walk') return { color: colorPavement, group: window.sportGroups.Pavement };
+            if (type === 'Hike' || type === 'TrailRun') return { color: colorDirt, group: window.sportGroups.Dirt };
+            if (type.includes('Swim')) return { color: colorSwim, group: window.sportGroups.Swim };
+            return { color: colorOther, group: window.sportGroups.Other };
+        }
+
         // A. Filter Map Lines Individually
         runningMapLines.forEach(line => {
-            const config = getSportConfig(line.sportType);
+            const config = getFastSportConfig(line.sportType);
             const type = line.sportType;
             const act = line.activityData;
             const activityId = act.id;
@@ -1172,8 +1192,8 @@
                 }
             } else {
                 // Normal Search & Checkbox Logic
-                // Generate the exact same search string used by the sidebar
-                const searchString = `${act.name} ${act.type} ${act.year}`.toLowerCase();
+                // Use pre-calculated search string to avoid re-evaluating in loops
+                const searchString = act.searchString || `${act.name} ${act.type} ${act.year}`.toLowerCase();
                 const matchesSearch = searchString.includes(query);
                 
                 let matchesType = false;
