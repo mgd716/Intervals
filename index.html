@@ -966,6 +966,9 @@
             const metrics = calculateActivityMetrics(activity);
             const listItem = createSidebarItem(activity, dateStr, metrics);
 
+            // Attach reference to avoid DOM query in filterSidebar
+            line.sidebarItem = listItem;
+
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
                 clearStartEndMarkers();
@@ -1228,41 +1231,16 @@
             } else {
                 if (config.group.hasLayer(line)) config.group.removeLayer(line);
             }
-        });
-
-        // B. Filter Sidebar Items
-        const items = document.querySelectorAll('.activity-item');
-        items.forEach(item => {
-            const activityId = String(item.getAttribute('data-id')); 
             
-            // Map Cluster Override mode for sidebar
-            if (selectedActivityIds !== null) {
-                if (selectedActivityIds.includes(activityId)) {
-                    item.style.display = 'block';
+            // Toggle sidebar item visibility, respecting cluster selection if active
+            if (line.sidebarItem) {
+                if (selectedActivityIds !== null) {
+                    line.sidebarItem.style.display = selectedActivityIds.includes(String(activityId)) ? 'block' : 'none';
                 } else {
-                    item.style.display = 'none';
+                    line.sidebarItem.style.display = isVisible ? 'block' : 'none';
                 }
-                return; 
             }
-
-            const text = item.getAttribute('data-search'); 
-            const type = item.getAttribute('data-type');
-            const matchesSearch = text.includes(query);
-            
-            let matchesType = false;
-            
-            if (specificSports.length > 0) {
-                matchesType = specificSports.includes(type);
-            } else {
-                matchesType = DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther);
-            }
-
-            if (matchesSearch && matchesType) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        }); 
+        });
     }
 
     function toggleFilters() {

@@ -27,3 +27,7 @@
 ## 2026-08-13 - [Supabase Query Optimization Correction]
  **Learning:** [Querying native, top-level columns in PostgreSQL (Supabase) is significantly faster and results in a smaller/similar payload compared to using JSONB extraction operators (e.g., `raw_data->distance`) at query time. The previous optimization that extracted from JSONB missed that these fields were already top-level columns.]
  **Action:** [Always query native columns when they are available instead of extracting values from a JSONB column on the fly. Check the schema/ingestion script first to confirm if a field is already mapped to a native column.]
+
+## 2024-06-25 - Optimize DOM queries in filtering loops
+**Learning:** Querying the DOM via `document.querySelectorAll()` and iterating over large collections of elements inside a UI hot path (e.g., search filtering typing events) creates significant main-thread blockages.
+**Action:** When creating DOM nodes mapped 1:1 to memory objects (like Leaflet map layers), attach the DOM node reference directly to the object (`line.sidebarItem = domElement`) at creation time. This allows toggling visibility instantly by iterating over the memory array rather than repeatedly searching the DOM tree.
