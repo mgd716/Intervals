@@ -384,6 +384,10 @@
             </div>
         </div>
         
+        <!-- Status messages for loading and empty states -->
+        <div id="loading-state" role="status" style="display: none; padding: 20px; text-align: center; color: #666; font-size: 14px;">Loading activities...</div>
+        <div id="empty-state" role="status" style="display: none; padding: 20px; text-align: center; color: #666; font-size: 14px;">No activities found.</div>
+
         <!-- Scrollable container for the dynamic list of activity items -->
         <div id="activity-list"></div>
     </div>
@@ -686,12 +690,16 @@
     
     // Safely load ALL map data
     async function loadData(targetYear) {
+        document.getElementById('loading-state').style.display = 'block';
+        document.getElementById('empty-state').style.display = 'none';
+
         runningMapLines.forEach(line => line.remove());
         runningMapLines = [];
         visitedTiles.clear();
         
         const listContainer = document.getElementById('activity-list');
         listContainer.innerHTML = '';
+        listContainer.setAttribute('aria-busy', 'true');
         
         let start = 0;
         const chunkSize = 1000;
@@ -738,6 +746,9 @@
             if (data.length < chunkSize) break;
             start += chunkSize;
         }
+
+        document.getElementById('loading-state').style.display = 'none';
+        listContainer.removeAttribute('aria-busy');
 
         sortActivities();
         filterSidebar();
@@ -1231,6 +1242,7 @@
         });
 
         // B. Filter Sidebar Items
+        let visibleCount = 0;
         const items = document.querySelectorAll('.activity-item');
         items.forEach(item => {
             const activityId = String(item.getAttribute('data-id')); 
@@ -1239,6 +1251,7 @@
             if (selectedActivityIds !== null) {
                 if (selectedActivityIds.includes(activityId)) {
                     item.style.display = 'block';
+                    visibleCount++;
                 } else {
                     item.style.display = 'none';
                 }
@@ -1259,10 +1272,22 @@
 
             if (matchesSearch && matchesType) {
                 item.style.display = 'block';
+                visibleCount++;
             } else {
                 item.style.display = 'none';
             }
         }); 
+
+        const emptyState = document.getElementById('empty-state');
+        if (visibleCount === 0 && runningMapLines.length > 0) {
+            emptyState.textContent = "No activities match your filters.";
+            emptyState.style.display = 'block';
+        } else if (runningMapLines.length === 0) {
+            emptyState.textContent = "No activities found.";
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+        }
     }
 
     function toggleFilters() {
