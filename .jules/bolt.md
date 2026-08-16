@@ -27,3 +27,6 @@
 ## 2026-08-13 - [Supabase Query Optimization Correction]
  **Learning:** [Querying native, top-level columns in PostgreSQL (Supabase) is significantly faster and results in a smaller/similar payload compared to using JSONB extraction operators (e.g., `raw_data->distance`) at query time. The previous optimization that extracted from JSONB missed that these fields were already top-level columns.]
  **Action:** [Always query native columns when they are available instead of extracting values from a JSONB column on the fly. Check the schema/ingestion script first to confirm if a field is already mapped to a native column.]
+## 2024-05-18 - Sidebar filtering DOM overhead
+**Learning:** `filterSidebar()` was iterating over DOM elements using `document.querySelectorAll('.activity-item')` on every keystroke/filter change.
+**Action:** Link DOM references directly to memory objects (e.g., `line.sidebarItem = listItem`) during initial creation to enable O(1) DOM updates. Map line visibility (`isVisible`) inherently handles complex logic like cluster overrides, so mirroring it directly to the sidebar avoids duplicating conditional checks.
