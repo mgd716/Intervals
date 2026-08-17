@@ -7,3 +7,8 @@
 **Vulnerability:** Missing timeout parameter in `requests.get()` calls to `intervals.icu` within `update_map.py`. This leaves the application vulnerable to indefinite hangs if the external service becomes unresponsive, which can lead to resource exhaustion and Denial of Service (DoS).
 **Learning:** External network dependencies are fundamentally unreliable. Default behavior in some libraries (like `requests` in Python) is to wait indefinitely for a response unless a timeout is explicitly provided.
 **Prevention:** Always configure explicit timeouts for all external HTTP requests. Enforce a standard timeout (e.g., `timeout=10`) across the application for any third-party API interactions.
+
+## 2025-02-13 - [MEDIUM] Reverse Tabnabbing Vulnerability via target="_blank"
+**Vulnerability:** External links created with `target="_blank"` in the frontend (e.g., `index.html`) did not include the `rel="noopener noreferrer"` attribute. This exposes users to Reverse Tabnabbing, where the newly opened page can access the original page's `window` object via `window.opener` and potentially redirect it to a malicious site.
+**Learning:** Adding `target="_blank"` without `rel="noopener noreferrer"` is a common security oversight that can compromise the user's origin session.
+**Prevention:** Always add `rel="noopener noreferrer"` when using `target="_blank"` on links navigating to external domains.
