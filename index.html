@@ -848,7 +848,7 @@
 
         listItem.innerHTML = `
             <h4 style="margin: 0 0 5px 0;">
-                <a href="https://intervals.icu/activities/${safeId}" target="_blank" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
+                <a href="https://intervals.icu/activities/${safeId}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;">
                     ${safeName} ↗
                 </a>
             </h4>
@@ -938,7 +938,7 @@
                         const safeActName = escapeHTML(act.name);
                         
                         html += `<div style="margin-bottom: 3px;">
-                                    <a href="https://intervals.icu/activities/${safeActId}" target="_blank" style="text-decoration: none; color: #333; font-size: 13px;">
+                                    <a href="https://intervals.icu/activities/${safeActId}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #333; font-size: 13px;">
                                         ${safeActName} (${dStr})
                                     </a>
                                  </div>`;
