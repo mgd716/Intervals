@@ -691,7 +691,11 @@
         visitedTiles.clear();
         
         const listContainer = document.getElementById('activity-list');
-        listContainer.innerHTML = '';
+        listContainer.innerHTML = '<div id="loading-state" role="status" style="padding: 15px; text-align: center; color: #555;">Loading activities...</div>';
+        listContainer.setAttribute('aria-busy', 'true');
+
+        // Yield to the browser to ensure the loading state is painted and announced by screen readers
+        await new Promise(resolve => setTimeout(resolve, 0));
         
         let start = 0;
         const chunkSize = 1000;
@@ -738,6 +742,10 @@
             if (data.length < chunkSize) break;
             start += chunkSize;
         }
+
+        const finalLoadingState = document.getElementById('loading-state');
+        if (finalLoadingState) finalLoadingState.remove();
+        listContainer.setAttribute('aria-busy', 'false');
 
         sortActivities();
         filterSidebar();
@@ -892,6 +900,9 @@
 
     function processAndRenderBatch(activities) {
         const listContainer = document.getElementById('activity-list');
+        const loadingState = document.getElementById('loading-state');
+        if (loadingState) loadingState.remove();
+
         const fragment = document.createDocumentFragment();
 
         activities.forEach(activity => {
@@ -1232,6 +1243,8 @@
 
         // B. Filter Sidebar Items
         const items = document.querySelectorAll('.activity-item');
+        let visibleCount = 0;
+
         items.forEach(item => {
             const activityId = String(item.getAttribute('data-id')); 
             
@@ -1239,6 +1252,7 @@
             if (selectedActivityIds !== null) {
                 if (selectedActivityIds.includes(activityId)) {
                     item.style.display = 'block';
+                    visibleCount++;
                 } else {
                     item.style.display = 'none';
                 }
@@ -1259,10 +1273,29 @@
 
             if (matchesSearch && matchesType) {
                 item.style.display = 'block';
+                visibleCount++;
             } else {
                 item.style.display = 'none';
             }
         }); 
+
+        const listContainer = document.getElementById('activity-list');
+        let emptyState = document.getElementById('empty-state');
+        if (visibleCount === 0 && !document.getElementById('loading-state')) {
+            if (!emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.id = 'empty-state';
+                emptyState.setAttribute('role', 'status');
+                emptyState.style.padding = '15px';
+                emptyState.style.textAlign = 'center';
+                emptyState.style.color = '#555';
+                emptyState.textContent = 'No activities found matching your filters.';
+                listContainer.appendChild(emptyState);
+            }
+            emptyState.style.display = 'block';
+        } else if (emptyState) {
+            emptyState.style.display = 'none';
+        }
     }
 
     function toggleFilters() {
