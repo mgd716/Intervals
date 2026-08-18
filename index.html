@@ -981,6 +981,9 @@
             const metrics = calculateActivityMetrics(activity);
             const listItem = createSidebarItem(activity, dateStr, metrics);
 
+            // Attach DOM element reference to the map line for O(1) lookups during filtering
+            line.sidebarItem = listItem;
+
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
                 clearStartEndMarkers();
@@ -1205,18 +1208,22 @@
             return { color: colorOther, group: window.sportGroups.Other };
         }
 
-        // A. Filter Map Lines Individually
+        let visibleCount = 0;
+
+        // Unified loop for Map Lines and Sidebar Items
         runningMapLines.forEach(line => {
             const config = getFastSportConfig(line.sportType);
             const type = line.sportType;
             const act = line.activityData;
-            const activityId = act.id;
+            const activityId = String(act.id);
+            const item = line.sidebarItem;
             
             let isVisible = false;
+            let itemIsVisible = false;
 
             // NEW: Unified helper to apply style, respecting the active highlight lock
             const applyStyle = (baseColor) => {
-                if (activeActivityId === activityId) {
+                if (activeActivityId === act.id) {
                     line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
                 } else {
                     line.setStyle({ color: baseColor, weight: 4, opacity: 0.3 });
@@ -1225,7 +1232,8 @@
 
             // Map Cluster Override (If a cluster is clicked, ONLY show those lines)
             if (selectedActivityIds !== null) {
-                isVisible = selectedActivityIds.includes(String(activityId));
+                isVisible = selectedActivityIds.includes(activityId);
+                itemIsVisible = isVisible; // Sidebar logic matches map cluster exactly
                 
                 // Maintain correct colors for the isolated lines
                 if (isVisible && specificSports.length > 0 && specificSports.includes(type)) {
@@ -1252,6 +1260,7 @@
                 }
                 
                 isVisible = matchesSearch && matchesType;
+                itemIsVisible = isVisible;
             }
 
             // Physically add or remove the line from the map
@@ -1260,49 +1269,22 @@
             } else {
                 if (config.group.hasLayer(line)) config.group.removeLayer(line);
             }
-        });
-
-        // B. Filter Sidebar Items
-        const items = document.querySelectorAll('.activity-item');
-        let visibleCount = 0;
-        items.forEach(item => {
-            const activityId = String(item.getAttribute('data-id')); 
             
-            // Map Cluster Override mode for sidebar
-            if (selectedActivityIds !== null) {
-                if (selectedActivityIds.includes(activityId)) {
+            // Toggle sidebar item visibility via stored reference
+            if (item) {
+                if (itemIsVisible) {
                     item.style.display = 'block';
                     visibleCount++;
                 } else {
                     item.style.display = 'none';
                 }
-                return; 
             }
-
-            const text = item.getAttribute('data-search'); 
-            const type = item.getAttribute('data-type');
-            const matchesSearch = text.includes(query);
-            
-            let matchesType = false;
-            
-            if (specificSports.length > 0) {
-                matchesType = specificSports.includes(type);
-            } else {
-                matchesType = DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther);
-            }
-
-            if (matchesSearch && matchesType) {
-                item.style.display = 'block';
-                visibleCount++;
-            } else {
-                item.style.display = 'none';
-            }
-        }); 
+        });
 
         // Toggle Empty State UI
         const emptyState = document.getElementById('empty-state');
         if (emptyState) {
-            if (visibleCount === 0 && items.length > 0) {
+            if (visibleCount === 0 && runningMapLines.length > 0) {
                 emptyState.style.display = 'block';
             } else {
                 emptyState.style.display = 'none';

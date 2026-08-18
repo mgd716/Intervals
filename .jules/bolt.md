@@ -27,3 +27,9 @@
 ## 2026-08-13 - [Supabase Query Optimization Correction]
  **Learning:** [Querying native, top-level columns in PostgreSQL (Supabase) is significantly faster and results in a smaller/similar payload compared to using JSONB extraction operators (e.g., `raw_data->distance`) at query time. The previous optimization that extracted from JSONB missed that these fields were already top-level columns.]
  **Action:** [Always query native columns when they are available instead of extracting values from a JSONB column on the fly. Check the schema/ingestion script first to confirm if a field is already mapped to a native column.]
+
+## 2024-05-18 - Single-Pass Filter Optimization
+
+**Learning:** When dealing with dual-state synchronization (e.g., updating a map's lines and a sidebar's corresponding list items), maintaining a single object relationship reference (`line.sidebarItem = listItem`) and iterating over a shared array (`runningMapLines.forEach`) eliminates expensive repeated DOM tree walks using `document.querySelectorAll()`.
+
+**Action:** Whenever a large list UI reflects parallel states on map items, consolidate synchronization operations into a single-pass loop utilizing pre-cached direct object references.
