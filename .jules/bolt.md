@@ -33,3 +33,13 @@
 **Learning:** When dealing with dual-state synchronization (e.g., updating a map's lines and a sidebar's corresponding list items), maintaining a single object relationship reference (`line.sidebarItem = listItem`) and iterating over a shared array (`runningMapLines.forEach`) eliminates expensive repeated DOM tree walks using `document.querySelectorAll()`.
 
 **Action:** Whenever a large list UI reflects parallel states on map items, consolidate synchronization operations into a single-pass loop utilizing pre-cached direct object references.
+
+## 2023-11-20 - Avoid Layout Thrashing in Map/DOM Sync
+
+**Learning:** When synchronizing map state with DOM elements in a loop (e.g. filtering thousands of items), unconditionally calling `line.setStyle()` and `item.style.display` triggers expensive Leaflet SVG redraws and browser reflows even if the style hasn't changed.
+**Action:** Always check the current property value before applying a new style (`if (item.style.display !== newDisplay) ...`) to skip redundant DOM updates.
+
+## 2023-11-20 - Sort Optimization (Schwartzian Transform)
+
+**Learning:** Sorting thousands of DOM elements by reading `data-*` attributes (`getAttribute`) and parsing dates/floats inside the `sort` comparison function is extremely slow due to repeated operations.
+**Action:** Use a Schwartzian transform (map to objects with pre-extracted values, sort, then map back/re-append) and `DocumentFragment` to batch DOM modifications. Also, prefer `Array.from(container.children)` over `container.querySelectorAll('.class')` for simple collections.
