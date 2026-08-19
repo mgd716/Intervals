@@ -1111,34 +1111,35 @@
 
     function sortActivities() {
         const listContainer = document.getElementById('activity-list');
-        const items = Array.from(listContainer.querySelectorAll('.activity-item'));
+        // ⚡ Bolt Optimization: NodeList children is much faster than querySelectorAll
+        const items = Array.from(listContainer.children);
         const sortType = document.getElementById('sort-select').value;
 
-        items.sort((a, b) => {
-            let result = 0;
+        // ⚡ Bolt Optimization: Map the values once (Schwartzian transform) to avoid
+        // slow DOM attribute reads and float/date parsing during every sort comparison
+        const mapped = items.map(item => {
+            let val;
             if (sortType === 'date') {
-                const dateA = new Date(a.getAttribute('data-date'));
-                const dateB = new Date(b.getAttribute('data-date'));
-                result = dateB - dateA; // Descending (newest first)
+                val = new Date(item.getAttribute('data-date')).getTime();
             } else if (sortType === 'distance') {
-                const distA = parseFloat(a.getAttribute('data-distance')) || 0;
-                const distB = parseFloat(b.getAttribute('data-distance')) || 0;
-                result = distB - distA; // Descending (longest first)
+                val = parseFloat(item.getAttribute('data-distance')) || 0;
             } else if (sortType === 'time') {
-                const timeA = parseFloat(a.getAttribute('data-time')) || 0;
-                const timeB = parseFloat(b.getAttribute('data-time')) || 0;
-                result = timeB - timeA; // Descending (longest first)
+                val = parseFloat(item.getAttribute('data-time')) || 0;
             } else if (sortType === 'pace') {
-                const speedA = parseFloat(a.getAttribute('data-speed')) || 0;
-                const speedB = parseFloat(b.getAttribute('data-speed')) || 0;
-                result = speedB - speedA; // Descending speed (fastest pace first)
+                val = parseFloat(item.getAttribute('data-speed')) || 0;
             }
+            return { value: val, element: item };
+        });
 
+        mapped.sort((a, b) => {
+            let result = b.value - a.value;
             return isSortAscending ? -result : result;
         });
 
-        // Re-append sorted items to the container
-        items.forEach(item => listContainer.appendChild(item));
+        // ⚡ Bolt Optimization: Use DocumentFragment to batch DOM inserts and avoid reflows
+        const fragment = document.createDocumentFragment();
+        mapped.forEach(item => fragment.appendChild(item.element));
+        listContainer.appendChild(fragment);
 
         // Ensure the SVG arrow icon rotates to reflect the direction
         // By default (descending), the user wants the icon pointing down (scaleY(-1))
@@ -1253,11 +1254,17 @@
             let itemIsVisible = false;
 
             // NEW: Unified helper to apply style, respecting the active highlight lock
+            // ⚡ Bolt Optimization: Only call setStyle if properties have actually changed
+            // to avoid expensive Leaflet SVG redraws on every filter keystroke.
             const applyStyle = (baseColor) => {
                 if (activeActivityId === act.id) {
-                    line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                    if (line.options.color !== '#ffff00' || line.options.weight !== 6) {
+                        line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                    }
                 } else {
-                    line.setStyle({ color: baseColor, weight: 4, opacity: 0.3 });
+                    if (line.options.color !== baseColor || line.options.weight !== 4) {
+                        line.setStyle({ color: baseColor, weight: 4, opacity: 0.3 });
+                    }
                 }
             };
 
@@ -1302,12 +1309,14 @@
             }
             
             // Toggle sidebar item visibility via stored reference
+            // ⚡ Bolt Optimization: Only update DOM display style if it's actually changing
+            // to prevent browser layout thrashing.
             if (item) {
                 if (itemIsVisible) {
-                    item.style.display = 'block';
+                    if (item.style.display !== 'block') item.style.display = 'block';
                     visibleCount++;
                 } else {
-                    item.style.display = 'none';
+                    if (item.style.display !== 'none') item.style.display = 'none';
                 }
             }
         });
@@ -1316,9 +1325,9 @@
         const emptyState = document.getElementById('empty-state');
         if (emptyState) {
             if (visibleCount === 0 && runningMapLines.length > 0) {
-                emptyState.style.display = 'block';
+                if (emptyState.style.display !== 'block') emptyState.style.display = 'block';
             } else {
-                emptyState.style.display = 'none';
+                if (emptyState.style.display !== 'none') emptyState.style.display = 'none';
             }
         }
     }
