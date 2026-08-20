@@ -43,3 +43,8 @@
 
 **Learning:** Sorting thousands of DOM elements by reading `data-*` attributes (`getAttribute`) and parsing dates/floats inside the `sort` comparison function is extremely slow due to repeated operations.
 **Action:** Use a Schwartzian transform (map to objects with pre-extracted values, sort, then map back/re-append) and `DocumentFragment` to batch DOM modifications. Also, prefer `Array.from(container.children)` over `container.querySelectorAll('.class')` for simple collections.
+## 2024-05-19 - Use Connection Pooling for API Calls
+
+**Learning:** When making multiple consecutive HTTP requests to the same domain (e.g., in a loop to fetch paginated data or details for many items), creating a new TCP connection and negotiating TLS for every request (which `requests.get` does) adds significant overhead. A benchmark showed a 3x speedup by reusing connections.
+
+**Action:** Whenever a script makes multiple HTTP requests to the same host, create a `requests.Session()` object and reuse it across all requests instead of using top-level `requests.get()` functions. Make sure to update any tests mocking the network calls to patch the session object appropriately.
