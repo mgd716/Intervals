@@ -548,9 +548,13 @@
             
             // Expand the extended stats section for clicked activities in the sidebar
             document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.activity-item').forEach(el => el.setAttribute('aria-expanded', 'false'));
             selectedActivityIds.forEach(id => {
                 const card = document.getElementById(`sidebar-item-${id}`);
-                if (card) card.querySelector('.extended-stats').style.display = 'block';
+                if (card) {
+                    card.querySelector('.extended-stats').style.display = 'block';
+                    card.setAttribute('aria-expanded', 'true');
+                }
             });
             
         } else {
@@ -879,6 +883,12 @@
         listItem.setAttribute('data-id', String(activity.id));
         listItem.setAttribute('role', 'button');
         listItem.setAttribute('tabindex', '0');
+        const safeId = escapeHTML(activity.id);
+        const safeName = escapeHTML(activity.name);
+        const safeType = escapeHTML(activity.type);
+
+        listItem.setAttribute('aria-expanded', 'false');
+        listItem.setAttribute('aria-controls', `extended-stats-${safeId}`);
 
         const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
         listItem.setAttribute('data-search', searchString);
@@ -887,10 +897,6 @@
         listItem.setAttribute('data-distance', metrics.distanceMiles);
         listItem.setAttribute('data-time', metrics.timeSecs);
         listItem.setAttribute('data-speed', metrics.speedMs);
-
-        const safeId = escapeHTML(activity.id);
-        const safeName = escapeHTML(activity.name);
-        const safeType = escapeHTML(activity.type);
 
         listItem.innerHTML = `
             <h4 style="margin: 0 0 5px 0;">
@@ -915,7 +921,7 @@
                 </div>
             </div>
 
-            <div class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
+            <div id="extended-stats-${safeId}" class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
                 <div class="activity-stats">
                     <div class="stat-box">
                         <span class="stat-label">Avg HR</span>
@@ -1033,8 +1039,10 @@
                 document.querySelectorAll('.extended-stats').forEach(el => {
                     el.style.display = 'none';
                 });
+                document.querySelectorAll('.activity-item').forEach(el => el.setAttribute('aria-expanded', 'false'));
                 
                 listItem.querySelector('.extended-stats').style.display = 'block';
+                listItem.setAttribute('aria-expanded', 'true');
 
                 // Add start and end markers
                 if (activity.coordinates && activity.coordinates.length > 0) {
