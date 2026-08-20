@@ -7,3 +7,6 @@
 ## 2024-08-18 - [Yielding to Event Loop for Visual Feedback]
 **Learning:** When implementing visual loading states in vanilla JavaScript before heavy synchronous execution loops, the browser won't paint the loading state if the main thread is immediately blocked.
 **Action:** Always explicitly yield to the event loop using `await new Promise(resolve => setTimeout(resolve, 0));` immediately after updating the DOM to show a loading state. This ensures it's painted and screen readers announce it.
+## 2024-11-20 - [Accordion ARIA properties and sync]
+**Learning:** When adding `.extended-stats` toggle logic on click in vanilla javascript, the trigger `div` wasn't properly communicating its state as an accordion to screen readers.
+**Action:** Always add `aria-expanded` and `aria-controls` to the parent container when rendering components with expandable content, and ensure click events properly toggle the `aria-expanded` property.
