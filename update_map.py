@@ -13,6 +13,9 @@ API_KEY = os.getenv("INTERVALS_API_KEY")
 # Using .strip() to remove any accidental hidden spaces or newlines
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
+
+# Create a global session to reuse TCP connections, improving performance
+http_session = requests.Session()
 # =======================================================
 
 def fetch_activities():
@@ -20,7 +23,8 @@ def fetch_activities():
     endpoint = f"api/v1/athlete/{ATHLETE_ID}/activities"
     params = {"oldest": "2010-01-01", "newest": "2030-01-01"}
     # Security: Added timeout to prevent infinite hangs and DoS risks
-    response = requests.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
+    # Performance: Reusing http_session to avoid repeated TCP handshakes
+    response = http_session.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
     if response.status_code != 200:
         raise Exception(f"Failed to fetch activities list: {response.status_code}")
     return response.json()
@@ -30,7 +34,8 @@ def fetch_gps_stream(activity_id):
     endpoint = f"api/v1/activity/{activity_id}/streams.json"
     params = {"types": "latlng"}
     # Security: Added timeout to prevent infinite hangs and DoS risks
-    response = requests.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
+    # Performance: Reusing http_session to avoid repeated TCP handshakes
+    response = http_session.get(base_url + endpoint, params=params, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
     
     if response.status_code == 200:
         streams = response.json()
@@ -59,7 +64,8 @@ def fetch_wellness_data(days_back=14):
     
     endpoint = f"api/v1/athlete/{ATHLETE_ID}/wellness?oldest={oldest}&newest={today}"
     # Security: Added timeout to prevent infinite hangs and DoS risks
-    response = requests.get(base_url + endpoint, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
+    # Performance: Reusing http_session to avoid repeated TCP handshakes
+    response = http_session.get(base_url + endpoint, auth=HTTPBasicAuth('API_KEY', API_KEY), timeout=10)
     
     if response.status_code == 200:
         return response.json()

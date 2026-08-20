@@ -7,7 +7,7 @@ def test_fetch_wellness_data_error_handling(capsys):
     Test that fetch_wellness_data returns an empty list and prints an error message
     when the API request returns a non-200 status code.
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         # Create a mock response object
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -27,7 +27,7 @@ def test_fetch_activities_error_handling():
     """
     Test that fetch_activities raises an Exception when the API request returns a non-200 status code.
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         # Create a mock response object
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -43,7 +43,7 @@ def test_fetch_gps_stream_happy_path():
     """
     Test that fetch_gps_stream successfully parses valid latlng data and correctly downsamples (every 4th element).
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         # 8 elements to test downsampling [::4] -> should return elements at index 0 and 4
@@ -64,7 +64,7 @@ def test_fetch_gps_stream_missing_keys():
     """
     Test fetch_gps_stream when the stream dictionary is missing expected keys like 'type' or 'data'.
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -81,7 +81,7 @@ def test_fetch_gps_stream_empty_lists():
     """
     Test fetch_gps_stream when data or data2 are empty lists.
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -100,7 +100,7 @@ def test_fetch_gps_stream_none_values():
     """
     Test fetch_gps_stream when data or data2 contain None values.
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -128,7 +128,7 @@ def test_fetch_gps_stream_not_a_list():
     """
     Test fetch_gps_stream when the JSON response is not a list.
     """
-    with patch("update_map.requests.get") as mock_get:
+    with patch("update_map.http_session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"type": "latlng", "data": [10.0], "data2": [20.0]} # Dict instead of list
