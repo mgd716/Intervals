@@ -670,12 +670,19 @@
         const point = map.project(latlng);
         const matches = [];
         
+        // ⚡ Bolt Optimization: Pre-calculate a bounding box around the click
+        // to fast-fail intersection checks without creating new padded bounds for every line
+        const clickBounds = L.latLngBounds(
+            [latlng.lat - 0.01, latlng.lng - 0.01],
+            [latlng.lat + 0.01, latlng.lng + 0.01]
+        );
+
         runningMapLines.forEach(line => {
             if (!map.hasLayer(line)) return; 
             
             // Fast bounding box check to exclude lines far away
             const bounds = line.getBounds();
-            if (!bounds.isValid() || !bounds.pad(0.01).contains(latlng)) return; 
+            if (!bounds.isValid() || !clickBounds.intersects(bounds)) return;
             
             // Detailed segment-by-segment check if inside bounding box
             const coords = line.getLatLngs();
