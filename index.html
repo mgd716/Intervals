@@ -332,7 +332,7 @@
             </div>
             
             <!-- Text search for activities -->
-            <input type="text" id="search-box" aria-label="Search activities by name or type" placeholder="Search activities..." onkeyup="debouncedFilterSidebar()">
+            <input type="text" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" onkeyup="debouncedFilterSidebar()">
             
             <!-- Toggle button for expanding/collapsing map filters -->
             <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filter-container" onclick="toggleFilters()">
@@ -560,7 +560,7 @@
         } else {
             // If click is empty, reset view to all activities
             selectedActivityIds = null;
-            document.getElementById('search-box').placeholder = "Search activities...";
+            document.getElementById('search-box').placeholder = "Search activities... (Press '/')";
         }
         // Apply the new visual state
         filterSidebar();
@@ -1386,6 +1386,17 @@
             });
         }
     }
+
+    // Global keyboard shortcut for search box
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '/') {
+            const activeTag = document.activeElement ? document.activeElement.tagName : '';
+            if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
+                e.preventDefault();
+                document.getElementById('search-box').focus();
+            }
+        }
+    });
 </script>
 
 </body>
