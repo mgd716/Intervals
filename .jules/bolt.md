@@ -48,3 +48,8 @@
 **Learning:** When making multiple consecutive HTTP requests to the same domain (e.g., in a loop to fetch paginated data or details for many items), creating a new TCP connection and negotiating TLS for every request (which `requests.get` does) adds significant overhead. A benchmark showed a 3x speedup by reusing connections.
 
 **Action:** Whenever a script makes multiple HTTP requests to the same host, create a `requests.Session()` object and reuse it across all requests instead of using top-level `requests.get()` functions. Make sure to update any tests mocking the network calls to patch the session object appropriately.
+## 2024-05-19 - Spatial Search Optimization
+
+**Learning:** When checking spatial intersections in a loop (like finding map lines near a cursor click), calling functions that allocate new objects on each iteration (e.g., `bounds.pad(0.01)`) creates massive garbage collection overhead and slows down the loop.
+
+**Action:** Pre-calculate bounding boxes or test ranges outside of the loop (e.g., `clickBounds`) and use simple intersection methods (`intersects()`) to fast-fail candidates before performing expensive geometric calculations.
