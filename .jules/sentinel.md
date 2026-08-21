@@ -13,3 +13,8 @@
 **Learning:** Even internal or trusted external links should use `rel="noopener noreferrer"` when opening in a new tab as a defense-in-depth measure.
 **Prevention:** Always include `rel="noopener noreferrer"` on any anchor tag that specifies `target="_blank"`.
 ## 2024-08-18 - [MEDIUM] Missing Content Security Policy\n**Vulnerability:** The `index.html` file lacked a Content-Security-Policy (CSP) meta tag, making the application more susceptible to Cross-Site Scripting (XSS) attacks and unauthorized data exfiltration.\n**Learning:** Even static or vanilla JS applications without complex build steps need security headers. While typically set by a web server, they can also be enforced via HTML meta tags when serving static files.\n**Prevention:** Always include a baseline CSP in the `<head>` of HTML entry points, restricting resources to trusted origins.
+
+## 2026-08-21 - [HIGH] Missing Subresource Integrity (SRI) on CDN Assets
+**Vulnerability:** External JavaScript and CSS libraries (Leaflet, Supabase) were loaded from public CDNs (unpkg, jsdelivr) without integrity checks. This creates a risk where a compromised CDN could serve malicious code that executes in the context of the application.
+**Learning:** Loading from CDNs without SRI trusts the CDN completely. If the CDN is breached or the DNS is hijacked, attackers can inject arbitrary scripts (XSS).
+**Prevention:** Always include `integrity` and `crossorigin="anonymous"` attributes when loading third-party assets from CDNs. When using CDNs like jsdelivr that allow version aliasing (e.g., `@2`), pin the dependency to an exact version (e.g., `@2.112.3`) to ensure the integrity hash remains valid over time.
