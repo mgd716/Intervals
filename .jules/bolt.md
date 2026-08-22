@@ -53,3 +53,8 @@
 **Learning:** When checking spatial intersections in a loop (like finding map lines near a cursor click), calling functions that allocate new objects on each iteration (e.g., `bounds.pad(0.01)`) creates massive garbage collection overhead and slows down the loop.
 
 **Action:** Pre-calculate bounding boxes or test ranges outside of the loop (e.g., `clickBounds`) and use simple intersection methods (`intersects()`) to fast-fail candidates before performing expensive geometric calculations.
+## 2026-08-14 - Pre-calculate and Map DOM Attributes
+
+**Learning:** Evaluating strings (`.includes`) or querying DOM state within highly iterative loops (like `filterSidebar` scanning thousands of map lines) causes massive performance overhead.
+
+**Action:** To optimize filtering performance, attach pre-calculated properties (e.g. `sportCategory`) to objects during their initial creation. Inside filter loops, pre-fetch DOM state into O(1) structures like Sets or pre-computed Object Maps (`categoryVisibility`, `configs`) to bypass evaluating complex logic repeatedly.
