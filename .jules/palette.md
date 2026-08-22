@@ -13,3 +13,6 @@
 ## 2025-02-12 - [Keyboard Shortcuts for Search]
 **Learning:** Frequently used inputs like search benefit greatly from keyboard shortcuts (like '/') to improve accessibility and user experience for power users. However, these shortcuts need to be carefully implemented to avoid interfering when the user is already typing in an input field.
 **Action:** Add global keyboard event listeners for shortcuts, ensuring they check the currently active element (e.g., `document.activeElement.tagName`) before triggering. Inform users of the shortcut via placeholder text or ARIA attributes.
+## 2025-02-12 - [Search Input UX and Events]
+**Learning:** Using `<input type="text">` for search fields misses out on the native 'x' clear button provided by browsers for `<input type="search">`. Additionally, tying filter logic to `onkeyup` fails to capture mouse interactions like clicking that native clear button or pasting via context menu.
+**Action:** Always use `<input type="search">` for search fields and use the `oninput` event rather than `onkeyup` to ensure all forms of input (keyboard, mouse paste, clear button) trigger the necessary filtering or validation logic.

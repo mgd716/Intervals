@@ -154,9 +154,26 @@
         #filter-toggle-btn:focus-visible,
         input[type="color"]:focus-visible,
         input[type="checkbox"]:focus-visible,
-        .activity-item:focus-visible {
+        .activity-item:focus-visible,
+        #clear-filters-btn:focus-visible {
             outline: 2px solid #0066ff;
             outline-offset: 2px;
+        }
+
+        /* Clear filters button styling */
+        .clear-btn {
+            background: #0066ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .clear-btn:hover {
+            background: #0056b3;
         }
 
         /* Label alignment for filter checkboxes */
@@ -332,7 +349,7 @@
             </div>
             
             <!-- Text search for activities -->
-            <input type="text" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" onkeyup="debouncedFilterSidebar()">
+            <input type="search" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" oninput="debouncedFilterSidebar()">
             
             <!-- Toggle button for expanding/collapsing map filters -->
             <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filter-container" onclick="toggleFilters()">
@@ -405,7 +422,7 @@
         </div>
 
         <!-- Empty State UI -->
-        <div id="empty-state" style="display: none; padding: 40px 20px; text-align: center; color: #666; flex-grow: 1; overflow-y: auto;">
+        <div id="empty-state" role="status" style="display: none; padding: 40px 20px; text-align: center; color: #666; flex-grow: 1; overflow-y: auto;">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; color: #999;">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -414,7 +431,7 @@
             </svg>
             <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">No activities found</h3>
             <p style="margin: 0 0 20px 0; font-size: 14px;">Try adjusting your filters or search terms.</p>
-            <button onclick="clearFilters()" style="background: #0066ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
+            <button id="clear-filters-btn" class="clear-btn" onclick="clearFilters()">
                 Clear all filters
             </button>
         </div>
