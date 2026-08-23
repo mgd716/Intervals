@@ -566,15 +566,21 @@
         filterSidebar();
     });
     
-    function getSportConfig(type) {
-        // Safety guard prevents the map from crashing if an activity has no type
-        if (!type) type = 'Other'; 
+    function getSportCategory(type) {
+        if (!type) return 'Other';
+        if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return 'Cycling';
+        if (type === 'Run' || type === 'Walk') return 'Pavement';
+        if (type === 'Hike' || type === 'TrailRun') return 'Dirt';
+        if (type.includes('Swim')) return 'Swim';
+        return 'Other';
+    }
 
-        if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
-        if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
-        if (type === 'Hike' || type === 'TrailRun') return { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt };
-        if (type.includes('Swim')) return { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim };
-        
+    function getSportConfig(type) {
+        const category = getSportCategory(type);
+        if (category === 'Cycling') return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling };
+        if (category === 'Pavement') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement };
+        if (category === 'Dirt') return { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt };
+        if (category === 'Swim') return { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim };
         return { color: document.getElementById('color-other').value, group: window.sportGroups.Other };
     }
     
@@ -832,6 +838,7 @@
             smoothFactor: 1
         });
         line.sportType = activity.type;
+        line.sportCategory = getSportCategory(activity.type);
         line.activityData = activity;
         return line;
     }
@@ -1231,36 +1238,24 @@
         
         const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
         const specificColor = document.getElementById('color-specific').value;
-        
-        const showCycling = document.getElementById('filter-cycling').checked;
-        const showPavement = document.getElementById('filter-pavement').checked;
-        const showDirt = document.getElementById('filter-dirt').checked;
-        const showSwim = document.getElementById('filter-swim').checked;
-        const showOther = document.getElementById('filter-other').checked;
 
-        // Pre-fetch colors to avoid querying the DOM inside the loop
-        const colorCycling = document.getElementById('color-cycling').value;
-        const colorPavement = document.getElementById('color-pavement').value;
-        const colorDirt = document.getElementById('color-dirt').value;
-        const colorSwim = document.getElementById('color-swim').value;
-        const colorOther = document.getElementById('color-other').value;
-
-        // Local helper to avoid querying the DOM inside the loop
-        function getFastSportConfig(type) {
-            if (!type) type = 'Other';
-            if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: colorCycling, group: window.sportGroups.Cycling };
-            if (type === 'Run' || type === 'Walk') return { color: colorPavement, group: window.sportGroups.Pavement };
-            if (type === 'Hike' || type === 'TrailRun') return { color: colorDirt, group: window.sportGroups.Dirt };
-            if (type.includes('Swim')) return { color: colorSwim, group: window.sportGroups.Swim };
-            return { color: colorOther, group: window.sportGroups.Other };
-        }
+        // Pre-calculate category config and visibility to avoid evaluations in the loop
+        // ⚡ Bolt Optimization: Use a map for O(1) lookups based on pre-calculated sportCategory
+        const categoryConfig = {
+            'Cycling': { show: document.getElementById('filter-cycling').checked, color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling },
+            'Pavement': { show: document.getElementById('filter-pavement').checked, color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement },
+            'Dirt': { show: document.getElementById('filter-dirt').checked, color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt },
+            'Swim': { show: document.getElementById('filter-swim').checked, color: document.getElementById('color-swim').value, group: window.sportGroups.Swim },
+            'Other': { show: document.getElementById('filter-other').checked, color: document.getElementById('color-other').value, group: window.sportGroups.Other }
+        };
 
         let visibleCount = 0;
 
         // Unified loop for Map Lines and Sidebar Items
         runningMapLines.forEach(line => {
-            const config = getFastSportConfig(line.sportType);
             const type = line.sportType;
+            const category = line.sportCategory;
+            const config = categoryConfig[category];
             const act = line.activityData;
             const activityId = String(act.id);
             const item = line.sidebarItem;
@@ -1309,7 +1304,7 @@
                 } else {
                     applyStyle(config.color);
                     // Check against broad category filters
-                    matchesType = DefaultCategoryFilter(type, showCycling, showPavement, showDirt, showSwim, showOther);
+                    matchesType = config.show;
                 }
                 
                 isVisible = matchesSearch && matchesType;
@@ -1365,17 +1360,9 @@
 
     function updateSportColor(baseType, newColor) {
         runningMapLines.forEach(line => {
-            let match = false;
-            const t = line.sportType;
-            
-            if (baseType === 'Cycling' && (t.includes('Ride') || t.includes('VirtualRide') || t.includes('EBike'))) match = true;
-            else if (baseType === 'Pavement' && (t === 'Run' || t === 'Walk')) match = true;
-            else if (baseType === 'Dirt' && (t === 'Hike' || t === 'TrailRun')) match = true;
-            else if (baseType === 'Swim' && t.includes('Swim')) match = true;
-            else if (baseType === 'Other' && !t.includes('Ride') && !t.includes('VirtualRide') && !t.includes('EBike') && t !== 'Run' && t !== 'Walk' && t !== 'Hike' && t !== 'TrailRun' && !t.includes('Swim')) match = true;
-            
             // NEW: Ensure we don't accidentally override the currently active yellow highlight
-            if (match && activeActivityId !== line.activityData.id) {
+            // ⚡ Bolt Optimization: Checking pre-calculated sportCategory is much faster than string includes
+            if (line.sportCategory === baseType && activeActivityId !== line.activityData.id) {
                 line.setStyle({ color: newColor }); 
             }
         });

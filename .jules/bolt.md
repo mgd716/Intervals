@@ -53,3 +53,9 @@
 **Learning:** When checking spatial intersections in a loop (like finding map lines near a cursor click), calling functions that allocate new objects on each iteration (e.g., `bounds.pad(0.01)`) creates massive garbage collection overhead and slows down the loop.
 
 **Action:** Pre-calculate bounding boxes or test ranges outside of the loop (e.g., `clickBounds`) and use simple intersection methods (`intersects()`) to fast-fail candidates before performing expensive geometric calculations.
+
+## 2026-08-23 - Map Property Caching
+
+**Learning:** Extracting string-based categorizations (`includes` checks) into pre-calculated properties on Javascript objects (`line.sportCategory`) before they enter a hot loop (`filterSidebar`) eliminates expensive string parsing during each filter event. By combining this with an O(1) object lookup dictionary (`categoryConfig[category]`), filtering thousands of map lines becomes noticeably faster.
+
+**Action:** Look for hot loops (like search or filter functions) that repeatedly evaluate static state using slow operations (like string manipulation or regex). Move the evaluation to when the object is created and cache the result as a primitive property for O(1) access later.
