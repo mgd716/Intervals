@@ -332,7 +332,7 @@
             </div>
             
             <!-- Text search for activities -->
-            <input type="text" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" onkeyup="debouncedFilterSidebar()">
+            <input type="search" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" oninput="debouncedFilterSidebar()">
             
             <!-- Toggle button for expanding/collapsing map filters -->
             <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filter-container" onclick="toggleFilters()">
