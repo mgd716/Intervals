@@ -18,3 +18,7 @@
 **Vulnerability:** External JavaScript and CSS libraries (Leaflet, Supabase) were loaded from public CDNs (unpkg, jsdelivr) without integrity checks. This creates a risk where a compromised CDN could serve malicious code that executes in the context of the application.
 **Learning:** Loading from CDNs without SRI trusts the CDN completely. If the CDN is breached or the DNS is hijacked, attackers can inject arbitrary scripts (XSS).
 **Prevention:** Always include `integrity` and `crossorigin="anonymous"` attributes when loading third-party assets from CDNs. When using CDNs like jsdelivr that allow version aliasing (e.g., `@2`), pin the dependency to an exact version (e.g., `@2.112.3`) to ensure the integrity hash remains valid over time.
+## 2025-02-23 - Strict Content Security Policy
+**Vulnerability:** XSS and script injection risk via loose Content-Security-Policy (CSP) configuration.
+**Learning:** The previous CSP allowed unsafe evaluation of code by including `unsafe-eval` in `script-src`, which is a common vector for DOM-based XSS attacks. It was also missing `object-src none` and `base-uri self`, leaving the application open to object injections and base tag hijacking.
+**Prevention:** Always restrict CSP `script-src` to omit `unsafe-eval` unless strictly necessary for a legacy library, and universally include defensive directives such as `object-src 'none'` and `base-uri 'self'` to minimize the application's attack surface.
