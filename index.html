@@ -698,32 +698,8 @@
         return matches;
     }
     
-    // Fetch unique years from Supabase to populate the filtering dropdown
-    async function initDropdown() {
-        let allYears = [];
-        let start = 0;
-        const chunkSize = 1000;
-
-        while (true) {
-            const { data, error } = await _supabase.from('activities').select('year').range(start, start + chunkSize - 1);
-            if (error || !data || data.length === 0) break;
-            
-            allYears.push(...data.map(item => item.year));
-            if (data.length < chunkSize) break;
-            start += chunkSize;
-        }
-
-        const uniqueYears = [...new Set(allYears)].sort((a, b) => b - a);
-        const dropdown = document.getElementById('year-select');
-        
-        uniqueYears.forEach(year => {
-            if (year > 0) {
-                const opt = document.createElement('option');
-                opt.value = year; opt.textContent = year;
-                dropdown.appendChild(opt);
-            }
-        });
-        
+    // We no longer fetch years separately; we populate them during the initial loadData("ALL") to avoid redundant API calls.
+    function initDropdown() {
         loadData("ALL");
     }
     
@@ -749,6 +725,7 @@
         const chunkSize = 1000;
         let uniqueTypesSet = new Set();
         let isFirstBatch = true;
+        let allYearsSet = new Set();
 
         const specificListContainer = document.getElementById('specific-sport-list');
         specificListContainer.innerHTML = '';
@@ -774,6 +751,9 @@
                 if (activity.type) {
                     uniqueTypesSet.add(activity.type);
                 }
+                if (activity.year) {
+                    allYearsSet.add(activity.year);
+                }
             });
 
             // Immediately process and render the new batch of data
@@ -793,6 +773,21 @@
 
         sortActivities();
         filterSidebar();
+
+        // Populate year dropdown on initial load
+        if (targetYear === "ALL") {
+            const dropdown = document.getElementById('year-select');
+            if (dropdown.options.length === 1) {
+                const uniqueYears = [...allYearsSet].sort((a, b) => b - a);
+                uniqueYears.forEach(year => {
+                    if (year > 0) {
+                        const opt = document.createElement('option');
+                        opt.value = year; opt.textContent = year;
+                        dropdown.appendChild(opt);
+                    }
+                });
+            }
+        }
 
         // =========================================================
         // BUILD DYNAMIC SCROLLABLE CHECKBOXES
