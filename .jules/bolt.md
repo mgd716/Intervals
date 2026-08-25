@@ -58,3 +58,7 @@
 **Learning:** Evaluating strings (`.includes`) or querying DOM state within highly iterative loops (like `filterSidebar` scanning thousands of map lines) causes massive performance overhead.
 
 **Action:** To optimize filtering performance, attach pre-calculated properties (e.g. `sportCategory`) to objects during their initial creation. Inside filter loops, pre-fetch DOM state into O(1) structures like Sets or pre-computed Object Maps (`categoryVisibility`, `configs`) to bypass evaluating complex logic repeatedly.
+## 2026-08-25 - Avoid Redundant Database Queries on Load
+
+**Learning:** Making separate, paginated API calls to a database just to populate a filter dropdown (e.g., getting unique years), and then immediately making another set of paginated calls to fetch the full records, effectively doubles the initial load time and network requests.
+**Action:** Consolidate data processing. When fetching large datasets in chunks, extract unique filter values (like years or categories) directly from the primary data fetch loop and update the UI once the loop completes.
