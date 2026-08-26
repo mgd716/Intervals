@@ -16,3 +16,6 @@
 ## 2025-02-13 - [Search Input UX]
 **Learning:** Using `type="search"` instead of `type="text"` provides users with a native "clear" button inside the input field, which improves UX significantly for filter-heavy interfaces. However, native clear actions do not trigger `keyup` events, meaning filters won't update automatically.
 **Action:** Always use `<input type="search">` for search inputs and bind filtering logic to the `oninput` event rather than `onkeyup` to ensure all state changes (including native clear and mouse pasting) are captured.
+## 2025-02-14 - [Stateful ARIA Labels for Toggle Buttons]
+**Learning:** When creating a button that toggles a state (like sort direction), a static `aria-label` like "Toggle sort direction" is insufficient for screen reader users as it doesn't indicate the current state or the result of the action.
+**Action:** Dynamically update the `aria-label` (and `title` for visual tooltips) via JavaScript to reflect the action that will occur when the button is clicked (e.g., "Sort ascending" when currently descending, and vice versa) or the current state alongside the action.
