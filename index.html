@@ -326,7 +326,7 @@
                         <option value="time">Sort: Time</option>
                         <option value="pace">Sort: Pace</option>
                     </select>
-                    <button id="sort-dir-btn" aria-label="Toggle sort direction" onclick="toggleSortDirection()" style="background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0 8px; display: flex; align-items: center; justify-content: center;" title="Toggle sort direction">
+                    <button id="sort-dir-btn" aria-label="Sort ascending" onclick="toggleSortDirection()" style="background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0 8px; display: flex; align-items: center; justify-content: center;" title="Sort ascending">
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="m18 21l-4-4h3V7h-3l4-4l4 4h-3v10h3M2 19v-2h10v2M2 13v-2h7v2M2 7V5h4v2z" /></svg>
                     </button>
                 </div>
@@ -1119,8 +1119,12 @@
         const btn = document.getElementById('sort-dir-btn');
         if (isSortAscending) {
             btn.style.background = '#e9ecef';
+            btn.setAttribute('aria-label', 'Sort descending');
+            btn.setAttribute('title', 'Sort descending');
         } else {
             btn.style.background = 'white';
+            btn.setAttribute('aria-label', 'Sort ascending');
+            btn.setAttribute('title', 'Sort ascending');
         }
 
         sortActivities();
@@ -1129,7 +1133,10 @@
     function onSortSelectChange() {
         // Reset to descending by default when changing sort type
         isSortAscending = false;
-        document.getElementById('sort-dir-btn').style.background = 'white';
+        const btn = document.getElementById('sort-dir-btn');
+        btn.style.background = 'white';
+        btn.setAttribute('aria-label', 'Sort ascending');
+        btn.setAttribute('title', 'Sort ascending');
         sortActivities();
     }
 
