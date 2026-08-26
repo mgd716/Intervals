@@ -62,3 +62,9 @@
 
 **Learning:** Making separate, paginated API calls to a database just to populate a filter dropdown (e.g., getting unique years), and then immediately making another set of paginated calls to fetch the full records, effectively doubles the initial load time and network requests.
 **Action:** Consolidate data processing. When fetching large datasets in chunks, extract unique filter values (like years or categories) directly from the primary data fetch loop and update the UI once the loop completes.
+
+## 2026-08-26 - Spatial Search Re-projection Optimization
+
+**Learning:** When checking spatial intersections on polylines segment-by-segment (like finding map lines near a cursor click), repeatedly calling `map.project(coords[i])` and `map.project(coords[i+1])` inside the loop redundantly projects the same coordinate twice.
+
+**Action:** Cache the projected end point of the previous segment to use as the starting point of the next segment. This effectively halves the number of expensive `map.project` calls and provides a measurable speedup during spatial search operations.

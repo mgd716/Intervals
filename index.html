@@ -687,12 +687,16 @@
             
             // Detailed segment-by-segment check if inside bounding box
             const coords = line.getLatLngs();
-            for (let i = 0; i < coords.length - 1; i++) {
-                const p1 = map.project(coords[i]);
-                const p2 = map.project(coords[i+1]);
-                if (L.LineUtil.pointToSegmentDistance(point, p1, p2) <= tolerancePixels) {
-                    matches.push(line);
-                    break; 
+            if (coords.length > 0) {
+                // ⚡ Bolt Optimization: Cache the projected start point to halve map.project calls
+                let p1 = map.project(coords[0]);
+                for (let i = 0; i < coords.length - 1; i++) {
+                    const p2 = map.project(coords[i+1]);
+                    if (L.LineUtil.pointToSegmentDistance(point, p1, p2) <= tolerancePixels) {
+                        matches.push(line);
+                        break;
+                    }
+                    p1 = p2;
                 }
             }
         });
