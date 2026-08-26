@@ -18,3 +18,8 @@
 **Vulnerability:** External JavaScript and CSS libraries (Leaflet, Supabase) were loaded from public CDNs (unpkg, jsdelivr) without integrity checks. This creates a risk where a compromised CDN could serve malicious code that executes in the context of the application.
 **Learning:** Loading from CDNs without SRI trusts the CDN completely. If the CDN is breached or the DNS is hijacked, attackers can inject arbitrary scripts (XSS).
 **Prevention:** Always include `integrity` and `crossorigin="anonymous"` attributes when loading third-party assets from CDNs. When using CDNs like jsdelivr that allow version aliasing (e.g., `@2`), pin the dependency to an exact version (e.g., `@2.112.3`) to ensure the integrity hash remains valid over time.
+
+## 2024-08-22 - [MEDIUM] Missing Input Length Limits (DoS risk)
+**Vulnerability:** The search input field (`#search-box`) in `index.html` lacked a `maxlength` attribute, allowing users or bots to paste excessively long strings, which could cause client-side performance issues or crashes during filter processing.
+**Learning:** Client-side inputs should have bounded lengths to prevent resource exhaustion, even if the processing is entirely local.
+**Prevention:** Always add a reasonable `maxlength` attribute (e.g., `maxlength="100"`) to text input fields, especially those that trigger expensive JavaScript operations on input.
