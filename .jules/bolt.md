@@ -68,3 +68,9 @@
 **Learning:** When checking spatial intersections on polylines segment-by-segment (like finding map lines near a cursor click), repeatedly calling `map.project(coords[i])` and `map.project(coords[i+1])` inside the loop redundantly projects the same coordinate twice.
 
 **Action:** Cache the projected end point of the previous segment to use as the starting point of the next segment. This effectively halves the number of expensive `map.project` calls and provides a measurable speedup during spatial search operations.
+
+## 2023-11-20 - Lazy Evaluation in Downsampling
+
+**Learning:** Using a list comprehension that performs expensive operations (like `round()`) on all elements just to subsequently slice out a fraction (e.g., `[::4]`) wastes CPU cycles and memory.
+
+**Action:** To optimize Python data processing pipelines that involve expensive element-wise operations followed by slice downsampling, use a generator expression combined with `itertools.islice` to evaluate only the retained elements lazily.
