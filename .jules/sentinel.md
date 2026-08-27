@@ -23,3 +23,8 @@
 **Vulnerability:** The search input field (`#search-box`) in `index.html` lacked a `maxlength` attribute, allowing users or bots to paste excessively long strings, which could cause client-side performance issues or crashes during filter processing.
 **Learning:** Client-side inputs should have bounded lengths to prevent resource exhaustion, even if the processing is entirely local.
 **Prevention:** Always add a reasonable `maxlength` attribute (e.g., `maxlength="100"`) to text input fields, especially those that trigger expensive JavaScript operations on input.
+
+## 2024-08-25 - [MEDIUM] Incomplete Input Sanitization in Template Literals
+**Vulnerability:** While primary attributes like `activity.id` and `activity.name` were being sanitized in `index.html` via `escapeHTML`, dynamically generated values derived from unvalidated database fields (such as `dateStr` constructed from `activity.start_date` or `activity.year`) were missed and injected directly into template literals. This leaves a partial XSS vulnerability.
+**Learning:** Sanitization must be applied universally to *all* dynamically generated content injected into HTML, not just obvious strings. Even values that appear to be structured data (like dates) can carry XSS payloads if the underlying data source is untrusted or improperly validated.
+**Prevention:** Apply `escapeHTML` to every variable before injecting it into DOM template literals, regardless of its expected type, unless the data has been strictly validated as a safe type (e.g., explicitly coerced to an integer) prior to injection.
