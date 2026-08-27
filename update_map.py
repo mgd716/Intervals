@@ -3,6 +3,7 @@ import requests
 import time
 import math
 import datetime
+import logging
 from requests.auth import HTTPBasicAuth
 from supabase import create_client, Client
 from typing import Dict, Any, List
@@ -217,7 +218,9 @@ def main():
 
         
     except Exception as e:
-        print(f"Error during execution: {e}")
+        # Security: Log the full exception internally, but show a generic message to the user
+        logging.error("Error during execution", exc_info=True)
+        print("An error occurred during execution.")
 
 if __name__ == "__main__":
     main()
