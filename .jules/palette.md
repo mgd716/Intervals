@@ -19,3 +19,6 @@
 ## 2025-02-14 - [Stateful ARIA Labels for Toggle Buttons]
 **Learning:** When creating a button that toggles a state (like sort direction), a static `aria-label` like "Toggle sort direction" is insufficient for screen reader users as it doesn't indicate the current state or the result of the action.
 **Action:** Dynamically update the `aria-label` (and `title` for visual tooltips) via JavaScript to reflect the action that will occur when the button is clicked (e.g., "Sort ascending" when currently descending, and vice versa) or the current state alongside the action.
+## 2025-02-15 - [Screen Reader Live Region Updates & External Link Accessibility]
+**Learning:** For dynamic interfaces that filter content, screen reader users might not know when search results change unless explicitly told. Also, external links with visual arrows like "↗" can be announced confusingly (e.g., "North East Arrow") by screen readers.
+**Action:** Use an `aria-live="polite"` visually hidden region to announce search result counts on dynamic filtering. Ensure decorative icons/arrows inside links are wrapped in `<span aria-hidden="true">` and provide a clear `aria-label` for the link.
