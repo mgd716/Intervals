@@ -1153,7 +1153,8 @@
         const listContainer = document.getElementById('activity-list');
         // ⚡ Bolt Optimization: NodeList children is much faster than querySelectorAll
         const items = Array.from(listContainer.children);
-        const sortType = document.getElementById('sort-select').value;
+        const sortSelect = document.getElementById('sort-select');
+        const sortType = sortSelect.value;
 
         // ⚡ Bolt Optimization: Map the values once (Schwartzian transform) to avoid
         // slow DOM attribute reads and float/date parsing during every sort comparison
@@ -1191,6 +1192,14 @@
                 svg.style.transform = isSortAscending ? 'none' : 'scaleY(-1)';
             }
         }
+
+        // Announce new sort order to screen readers
+        const announcer = document.getElementById('search-announcer');
+        if (announcer && sortSelect.options[sortSelect.selectedIndex]) {
+            const sortText = sortSelect.options[sortSelect.selectedIndex].text;
+            const directionText = isSortAscending ? 'ascending' : 'descending';
+            announcer.textContent = `${sortText}, ${directionText}`;
+        }
     }
 
     // Debounce utility to prevent UI blocking on every keystroke when typing in the search box
@@ -1224,6 +1233,9 @@
 
         filterSidebar();
         loadData("ALL");
+
+        // Return focus to search box to prevent focus loss when empty state hides
+        document.getElementById('search-box').focus();
     }
 
     // 1. If a user clicks a broad category, uncheck all specific sports
