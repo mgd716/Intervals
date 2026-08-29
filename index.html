@@ -1224,6 +1224,9 @@
 
         filterSidebar();
         loadData("ALL");
+
+        // Return focus to search box so keyboard users don't lose their place when the clear button is hidden
+        document.getElementById('search-box').focus();
     }
 
     // 1. If a user clicks a broad category, uncheck all specific sports
