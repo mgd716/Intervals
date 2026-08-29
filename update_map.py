@@ -3,7 +3,6 @@ import requests
 import time
 import math
 import datetime
-import logging
 from requests.auth import HTTPBasicAuth
 from supabase import create_client, Client
 from typing import Dict, Any, List
@@ -171,56 +170,50 @@ def main():
         print("Error: SUPABASE_URL must start with http:// or https://")
         return
 
-    try:
-        # We initialize the client HERE so the script can validate the strings first
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    # We initialize the client HERE so the script can validate the strings first
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    # 1. Fetch ALL existing IDs by paginating in chunks of 1000
+    existing_ids = set()
+    start = 0
+    chunk_size = 1000
+
+    while True:
+        response = supabase.table("activities").select("id").range(start, start + chunk_size - 1).execute()
+        if not response.data:
+            break
+        for row in response.data:
+            existing_ids.add(str(row["id"]))
+        start += chunk_size
+
+    activities = fetch_activities()
+    print(f"Checking {len(activities)} total activities against {len(existing_ids)} in database...")
+
+    new_downloads = 0
+    activities_to_upsert = []
+
+    for idx, act in enumerate(activities):
+        act_id = str(act.get("id"))
         
-        # 1. Fetch ALL existing IDs by paginating in chunks of 1000
-        existing_ids = set()
-        start = 0
-        chunk_size = 1000
-        
-        while True:
-            response = supabase.table("activities").select("id").range(start, start + chunk_size - 1).execute()
-            if not response.data:
-                break
-            for row in response.data:
-                existing_ids.add(str(row["id"]))
-            start += chunk_size
-        
-        activities = fetch_activities()
-        print(f"Checking {len(activities)} total activities against {len(existing_ids)} in database...")
-        
-        new_downloads = 0
-        activities_to_upsert = []
-        
-        for idx, act in enumerate(activities):
-            act_id = str(act.get("id"))
+        if act_id in existing_ids:
+            continue
             
-            if act_id in existing_ids:
-                continue
-                
-            act_name = act.get("name", f"Activity {act_id}")
-            print(f"[{idx+1}/{len(activities)}] Processing: {act_name}")
-            
-            processed_activity = process_activity(act)
-            activities_to_upsert.append(processed_activity)
-            new_downloads += 1
+        act_name = act.get("name", f"Activity {act_id}")
+        print(f"[{idx+1}/{len(activities)}] Processing: {act_name}")
 
-        if activities_to_upsert:
-            supabase.table("activities").upsert(activities_to_upsert).execute()
+        processed_activity = process_activity(act)
+        activities_to_upsert.append(processed_activity)
+        new_downloads += 1
 
-        print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
+    if activities_to_upsert:
+        supabase.table("activities").upsert(activities_to_upsert).execute()
 
-    # --- Step Sync ---
-        sync_steps_to_supabase(supabase, days_back=14)
+    print(f"\nSuccess! Inserted {new_downloads} new tracks into the database.")
+
+# --- Step Sync ---
+    sync_steps_to_supabase(supabase, days_back=14)
 
 
-        
-    except Exception as e:
-        # Security: Log the full exception internally, but show a generic message to the user
-        logging.error("Error during execution", exc_info=True)
-        print("An error occurred during execution.")
 
 if __name__ == "__main__":
     main()
