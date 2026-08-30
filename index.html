@@ -921,15 +921,15 @@
             <div class="activity-stats">
                 <div class="stat-box">
                     <span class="stat-label">Distance</span>
-                    <strong>${metrics.distStr}</strong>
+                    <strong>${escapeHTML(metrics.distStr)}</strong>
                 </div>
                 <div class="stat-box">
                     <span class="stat-label">Time</span>
-                    <strong>${metrics.timeStr}</strong>
+                    <strong>${escapeHTML(metrics.timeStr)}</strong>
                 </div>
                 <div class="stat-box">
-                    <span class="stat-label">${metrics.paceLabel}</span>
-                    <strong>${metrics.paceStr}</strong>
+                    <span class="stat-label">${escapeHTML(metrics.paceLabel)}</span>
+                    <strong>${escapeHTML(metrics.paceStr)}</strong>
                 </div>
             </div>
 
@@ -937,15 +937,15 @@
                 <div class="activity-stats">
                     <div class="stat-box">
                         <span class="stat-label">Avg HR</span>
-                        <strong>${metrics.hr}</strong>
+                        <strong>${escapeHTML(metrics.hr)}</strong>
                     </div>
                     <div class="stat-box">
                         <span class="stat-label">Avg Power</span>
-                        <strong>${metrics.power}</strong>
+                        <strong>${escapeHTML(metrics.power)}</strong>
                     </div>
                     <div class="stat-box">
                         <span class="stat-label">Elevation</span>
-                        <strong>${metrics.elev}</strong>
+                        <strong>${escapeHTML(metrics.elev)}</strong>
                     </div>
                 </div>
             </div>
