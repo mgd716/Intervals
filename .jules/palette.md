@@ -22,3 +22,6 @@
 ## 2025-02-15 - [Screen Reader Live Region Updates & External Link Accessibility]
 **Learning:** For dynamic interfaces that filter content, screen reader users might not know when search results change unless explicitly told. Also, external links with visual arrows like "↗" can be announced confusingly (e.g., "North East Arrow") by screen readers.
 **Action:** Use an `aria-live="polite"` visually hidden region to announce search result counts on dynamic filtering. Ensure decorative icons/arrows inside links are wrapped in `<span aria-hidden="true">` and provide a clear `aria-label` for the link.
+## 2025-02-16 - [Focus Management on Dynamic Element Removal]
+**Learning:** When an interactive element (like a "Clear filters" button) is clicked and its action results in the element being removed or hidden from the DOM, keyboard focus is lost and resets to the `<body>`. This forces keyboard and screen reader users to tab back through the entire interface to continue interacting.
+**Action:** Always programmatically return focus to a logical, stable element (such as a search input or a top-level container) when the currently focused element is dynamically hidden or destroyed.
