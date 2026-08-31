@@ -4,6 +4,7 @@ import time
 import math
 import datetime
 import logging
+import itertools
 from requests.auth import HTTPBasicAuth
 from supabase import create_client, Client
 from typing import Dict, Any, List
@@ -46,7 +47,8 @@ def fetch_gps_stream(activity_id):
                     lats = stream.get("data", [])
                     lngs = stream.get("data2", [])
                     if lats and lngs:
-                       return [[round(lat, 5), round(lng, 5)] for lat, lng in zip(lats, lngs) if lat is not None and lng is not None][::4]
+                        valid_points = ((lat, lng) for lat, lng in zip(lats, lngs) if lat is not None and lng is not None)
+                        return [[round(lat, 5), round(lng, 5)] for lat, lng in itertools.islice(valid_points, 0, None, 4)]
     return None
     
 def get_tile(lat, lon, zoom):
