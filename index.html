@@ -1224,6 +1224,9 @@
 
         filterSidebar();
         loadData("ALL");
+
+        // Return focus to search box since the clear button might be hidden after filtering
+        document.getElementById('search-box').focus();
     }
 
     // 1. If a user clicks a broad category, uncheck all specific sports
@@ -1370,7 +1373,12 @@
         const icon = document.getElementById('filter-icon');
         const btn = document.getElementById('filter-toggle-btn');
         
-        if (container.style.display === 'none' || container.style.display === '') {
+        // Ensure we check computed style if inline style is not set,
+        // to correctly handle the initial CSS 'display: none'.
+        const isHidden = container.style.display === 'none' ||
+                        (container.style.display === '' && window.getComputedStyle(container).display === 'none');
+
+        if (isHidden) {
             container.style.display = 'flex';
             icon.textContent = '▲';
             btn.setAttribute('aria-expanded', 'true');
