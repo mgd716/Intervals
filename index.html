@@ -1191,6 +1191,19 @@
                 svg.style.transform = isSortAscending ? 'none' : 'scaleY(-1)';
             }
         }
+
+        // Announce sort change to screen readers
+        const announcer = document.getElementById('search-announcer');
+        if (announcer) {
+            const sortSelect = document.getElementById('sort-select');
+            const sortText = sortSelect.options[sortSelect.selectedIndex].text.replace('Sort: ', '').toLowerCase();
+            const dirText = isSortAscending ? 'ascending' : 'descending';
+            let visibleCount = 0;
+            for (const item of items) {
+                if (item.style.display !== 'none') visibleCount++;
+            }
+            announcer.textContent = `Showing ${visibleCount} activities, sorted by ${sortText} ${dirText}`;
+        }
     }
 
     // Debounce utility to prevent UI blocking on every keystroke when typing in the search box
@@ -1224,6 +1237,8 @@
 
         filterSidebar();
         loadData("ALL");
+
+        document.getElementById('search-box').focus();
     }
 
     // 1. If a user clicks a broad category, uncheck all specific sports
@@ -1361,7 +1376,10 @@
         // Announce search results for screen readers
         const announcer = document.getElementById('search-announcer');
         if (announcer && runningMapLines.length > 0) {
-            announcer.textContent = `Showing ${visibleCount} activities`;
+            const sortSelect = document.getElementById('sort-select');
+            const sortText = sortSelect.options[sortSelect.selectedIndex].text.replace('Sort: ', '').toLowerCase();
+            const dirText = isSortAscending ? 'ascending' : 'descending';
+            announcer.textContent = `Showing ${visibleCount} activities, sorted by ${sortText} ${dirText}`;
         }
     }
 
