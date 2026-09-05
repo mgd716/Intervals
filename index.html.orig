@@ -10,10 +10,10 @@
     <!-- Security: Control referrer information -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
-    
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
-   
+
     <style>
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -61,7 +61,7 @@
             border-bottom: 1px solid #ddd;
             flex-shrink: 0; /* Prevents the header from getting crushed when the list is long */
         }
-        
+
         /* Button to toggle the visibility of map filters */
         #filter-toggle-btn {
             width: 100%;
@@ -84,7 +84,7 @@
         #filter-toggle-btn:hover {
             background-color: #e9ecef;
         }
-        
+
         /* Row layout for individual filter checkboxes and color pickers */
         .filter-row {
             display: flex;
@@ -110,10 +110,10 @@
             cursor: pointer;
             background: transparent;
         }
-        
+
         /* Container for all sport-specific filters (hidden by default) */
         .sport-filters {
-            display: none; 
+            display: none;
             flex-wrap: wrap;
             gap: 10px;
             margin-top: 10px;
@@ -124,7 +124,7 @@
             font-size: 13px;
             color: #444;
         }
-        
+
         /* Container for side-by-side dropdowns */
         .dropdown-row {
             display: flex;
@@ -263,21 +263,21 @@
         @media (max-width: 768px) {
             #app-container {
                 flex-direction: column;
-                height: 100dvh; 
+                height: 100dvh;
             }
-            
+
             #map {
                 width: 100%;
-                flex: 0 0 50%; 
+                flex: 0 0 50%;
             }
 
             #sidebar {
                 width: 100%;
-                flex: 1; 
-                height: auto; 
+                flex: 1;
+                height: auto;
                 border-left: none;
                 border-top: 2px solid #ccc;
-                overflow: hidden; 
+                overflow: hidden;
             }
         }
     </style>
@@ -307,7 +307,7 @@
 <div id="app-container">
     <!-- Map container -->
     <div id="map"></div>
-    
+
     <!-- Sidebar for controls and activity list -->
     <div id="sidebar">
         <!-- Live region for screen reader announcements about filtering results -->
@@ -334,15 +334,15 @@
                     </button>
                 </div>
             </div>
-            
+
             <!-- Text search for activities -->
             <input type="search" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" oninput="debouncedFilterSidebar()" maxlength="100">
-            
+
             <!-- Toggle button for expanding/collapsing map filters -->
             <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filter-container" onclick="toggleFilters()">
                 Map Filters <span id="filter-icon" aria-hidden="true">▼</span>
             </button>
-            
+
             <!-- Container for filtering options (initially hidden) -->
             <div class="sport-filters" id="filter-container">
                 <!-- Broad category filters (Cycling, Pavement, Dirt, etc.) -->
@@ -374,9 +374,9 @@
                         <label for="filter-other">Other</label>
                     </div>
                 </div>
-                
+
                 <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
-                
+
                 <!-- Scrollable Specific Sport Box -->
                 <div style="width: 100%; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
                     <strong>Specific Sport Override</strong>
@@ -389,13 +389,13 @@
                 </div>
 
                 <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
-                
+
                 <!-- Grid tile overlays (Squadrats) -->
                 <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadrats" onchange="drawTileGrid()"> Squadrats (14)</label>
                 <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadratinhos" onchange="drawTileGrid()"> Squadratinhos (17)</label>
             </div>
         </div>
-        
+
         <!-- Scrollable container for the dynamic list of activity items -->
         <div id="activity-list"></div>
 
@@ -449,25 +449,25 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Popup configuration used for hover clusters (non-interactive)
-    const clusterPopup = L.popup({ 
-        autoPan: false, 
-        closeButton: false, 
+    const clusterPopup = L.popup({
+        autoPan: false,
+        closeButton: false,
         className: 'ghost-popup',
-        offset: [0, -15] 
+        offset: [0, -15]
     });
 
     // ==========================================
     // 2. MAP SETUP
     // ==========================================
     // Initialize Leaflet map, centered roughly on Buffalo, NY
-    const map = L.map('map').setView([42.8864, -78.8784], 10); 
+    const map = L.map('map').setView([42.8864, -78.8784], 10);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
     }).addTo(map);
 
     // Grouping layers by sport category for easy batch toggling
     window.sportGroups = {
-        Cycling: L.featureGroup().addTo(map), 
+        Cycling: L.featureGroup().addTo(map),
         Pavement: L.featureGroup().addTo(map),
         Dirt: L.featureGroup().addTo(map),
         Swim: L.featureGroup().addTo(map),
@@ -482,8 +482,8 @@
     // CLUSTER TRACKING & HIGHLIGHTING
     // ==========================================
     // State variables for managing selected and highlighted lines
-    let selectedActivityIds = null; 
-    let highlightedLines = []; 
+    let selectedActivityIds = null;
+    let highlightedLines = [];
     let activeActivityId = null; // NEW: Track the currently active activity highlight
 
     // State variables for start and end markers
@@ -500,21 +500,21 @@
             currentEndMarker = null;
         }
     }
-    
+
     // NEW HELPER: Reverts a line to its proper specific or category color
     function resetLineStyle(l) {
         if (!l || !l.activityData) return;
         const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
         const specificColor = document.getElementById('color-specific').value;
-        
+
         const type = l.activityData.type;
         let restoreColor = getSportConfig(type).color;
-        
+
         // If this sport is selected in the specific list, restore to the custom color instead
         if (specificSports.length > 0 && specificSports.includes(type)) {
             restoreColor = specificColor;
         }
-        
+
         l.setStyle({ color: restoreColor, weight: 4, opacity: 0.30 });
     }
 
@@ -525,16 +525,16 @@
             if (activeActivityId && l.activityData.id === activeActivityId) return;
             resetLineStyle(l);
         });
-        highlightedLines = []; 
+        highlightedLines = [];
     }
 
     // Map click handler to select a specific cluster of lines
     map.on('click', function(e) {
         // Find lines within a short pixel distance from the click
         const cluster = getOverlappingLines(e.latlng, 15);
-        
+
         clearStartEndMarkers();
-        
+
         // NEW: Unhighlight previously active line when map is clicked
         if (activeActivityId) {
             const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
@@ -546,10 +546,10 @@
             // Isolate map to show only clicked activities
             selectedActivityIds = cluster.map(l => String(l.activityData.id));
             document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
-            
+
             // Scroll to the top of the sidebar
             document.getElementById('activity-list').scrollTop = 0;
-            
+
             // Expand the extended stats section for clicked activities in the sidebar
             document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.activity-item').forEach(el => el.setAttribute('aria-expanded', 'false'));
@@ -560,7 +560,7 @@
                     card.setAttribute('aria-expanded', 'true');
                 }
             });
-            
+
         } else {
             // If click is empty, reset view to all activities
             selectedActivityIds = null;
@@ -569,19 +569,19 @@
         // Apply the new visual state
         filterSidebar();
     });
-    
+
     function getSportConfig(type) {
         // Safety guard prevents the map from crashing if an activity has no type
-        if (!type) type = 'Other'; 
+        if (!type) type = 'Other';
 
         if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling, category: 'Cycling' };
         if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement, category: 'Pavement' };
         if (type === 'Hike' || type === 'TrailRun') return { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt, category: 'Dirt' };
         if (type.includes('Swim')) return { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim, category: 'Swim' };
-        
+
         return { color: document.getElementById('color-other').value, group: window.sportGroups.Other, category: 'Other' };
     }
-    
+
     // Maps a specific sport type string to its corresponding category color and layer group
    function getSportIcon(type) {
        if (!type) type = 'Other';
@@ -599,7 +599,7 @@
         else if (type === 'Golf') iconId = 'icon-golf';
         else if (type === 'Walk') iconId = 'icon-walk';
         else if (type.includes('Swim')) iconId = 'icon-swim';
-        
+
         return `<svg class="sport-icon" aria-hidden="true"><use href="#${iconId}"></use></svg>`;
     }
 
@@ -610,7 +610,7 @@
         if (map.getZoom() < 10) return;
         const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
         const sePoint = map.project(bounds.getSouthEast(), targetZoom);
-        
+
         const minX = Math.floor(nwPoint.x / 256);
         const maxX = Math.floor(sePoint.x / 256);
         const minY = Math.floor(nwPoint.y / 256);
@@ -618,30 +618,30 @@
 
         const totalTiles = (maxX - minX + 1) * (maxY - minY + 1);
         if (totalTiles > 5000) {
-            return; 
+            return;
         }
 
         for (let x = minX; x <= maxX; x++) {
             for (let y = minY; y <= maxY; y++) {
                 const tileNw = map.unproject(L.point(x * 256, y * 256), targetZoom);
                 const tileSe = map.unproject(L.point((x + 1) * 256, (y + 1) * 256), targetZoom);
-                
+
                 const tileKey = `${targetZoom}_${x}_${y}`;
                 const isVisited = visitedTiles.has(tileKey);
 
-                const currentStyle = { 
-                    color: baseColor, 
-                    weight: 1, 
-                    opacity: 0.3,      
-                    fillOpacity: 0, 
-                    interactive: false 
+                const currentStyle = {
+                    color: baseColor,
+                    weight: 1,
+                    opacity: 0.3,
+                    fillOpacity: 0,
+                    interactive: false
                 };
 
                 if (isVisited) {
                     currentStyle.fillColor = baseColor;
-                    currentStyle.fillOpacity = 0.2; 
+                    currentStyle.fillOpacity = 0.2;
                 }
-                
+
                 L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(gridLayerGroup);
             }
         }
@@ -655,10 +655,10 @@
         const show17 = document.getElementById('filter-squadratinhos').checked;
 
         if (show14) {
-            drawGridForZoom(14, bounds, "#ff7800"); 
+            drawGridForZoom(14, bounds, "#ff7800");
         }
         if (show17) {
-            drawGridForZoom(17, bounds, "#0066ff"); 
+            drawGridForZoom(17, bounds, "#0066ff");
         }
     }
 
@@ -673,7 +673,7 @@
         // Project map coordinates into pixels for distance calculation
         const point = map.project(latlng);
         const matches = [];
-        
+
         // ⚡ Bolt Optimization: Pre-calculate a bounding box around the click
         // to fast-fail intersection checks without creating new padded bounds for every line
         const clickBounds = L.latLngBounds(
@@ -682,12 +682,12 @@
         );
 
         runningMapLines.forEach(line => {
-            if (!map.hasLayer(line)) return; 
-            
+            if (!map.hasLayer(line)) return;
+
             // Fast bounding box check to exclude lines far away
             const bounds = line.getBounds();
             if (!bounds.isValid() || !clickBounds.intersects(bounds)) return;
-            
+
             // Detailed segment-by-segment check if inside bounding box
             const coords = line.getLatLngs();
             if (coords.length > 0) {
@@ -705,12 +705,12 @@
         });
         return matches;
     }
-    
+
     // We no longer fetch years separately; we populate them during the initial loadData("ALL") to avoid redundant API calls.
     function initDropdown() {
         loadData("ALL");
     }
-    
+
     // Safely load ALL map data
     async function loadData(targetYear) {
         // Show loading state
@@ -725,10 +725,10 @@
         runningMapLines.forEach(line => line.remove());
         runningMapLines = [];
         visitedTiles.clear();
-        
+
         const listContainer = document.getElementById('activity-list');
         listContainer.innerHTML = '';
-        
+
         let start = 0;
         const chunkSize = 1000;
         let uniqueTypesSet = new Set();
@@ -766,7 +766,7 @@
 
             // Immediately process and render the new batch of data
             processAndRenderBatch(data);
-            
+
             if (isFirstBatch) {
                 if (runningMapLines.length > 0) {
                     const group = L.featureGroup(runningMapLines);
@@ -802,14 +802,14 @@
         // Populate the Specific Sport Override filter box with all discovered types
         // =========================================================
         const uniqueTypes = [...uniqueTypesSet].sort();
-        specificListContainer.innerHTML = ''; 
+        specificListContainer.innerHTML = '';
 
         uniqueTypes.forEach(type => {
             const lbl = document.createElement('label');
-            lbl.style.display = 'block'; 
+            lbl.style.display = 'block';
             lbl.style.marginBottom = '4px';
             lbl.style.cursor = 'pointer';
-            
+
             const safeType = escapeHTML(type);
             // Safe to inject because we just escaped 'type'
             lbl.innerHTML = `<input type="checkbox" class="specific-type-cb" value="${safeType}" onchange="clearCheckboxesAndFilter()"> ${safeType}`;
@@ -973,9 +973,9 @@
             let dateStr = activity.year;
             if (activity.start_date) {
                 const d = new Date(activity.start_date);
-                dateStr = d.toLocaleDateString(undefined, { 
-                    weekday: 'short', 
-                    month: 'short', 
+                dateStr = d.toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
                     day: 'numeric',
                     year: 'numeric'
                 });
@@ -983,25 +983,25 @@
 
             // CLUSTER HOVER
             line.on('mouseover', function (e) {
-                clearMapHighlights(); 
-                
+                clearMapHighlights();
+
                 const cluster = getOverlappingLines(e.latlng, 10);
                 cluster.sort((a, b) => new Date(b.activityData.start_date || b.activityData.year) - new Date(a.activityData.start_date || a.activityData.year));
-                
+
                 let html = '<div style="font-family: Arial; text-align: left; max-height: 200px; overflow-y: auto;">';
-                
+
                 cluster.forEach((l, index) => {
                     l.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
                     l.bringToFront();
-                    highlightedLines.push(l); 
-                    
+                    highlightedLines.push(l);
+
                     if (index < 5) {
                         const act = l.activityData;
                         const dStr = act.start_date ? new Date(act.start_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' }) : act.year;
                         const safeDStr = escapeHTML(dStr);
                         const safeActId = escapeHTML(act.id);
                         const safeActName = escapeHTML(act.name);
-                        
+
                         html += `<div style="margin-bottom: 3px;">
                                     <a href="https://intervals.icu/activities/${safeActId}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #333; font-size: 13px;">
                                         ${safeActName} (${safeDStr})
@@ -1009,12 +1009,12 @@
                                  </div>`;
                     }
                 });
-                
+
                 if (cluster.length > 5) {
                     html += `<div style="font-size: 11px; color: #888; margin-top: 4px;">... and ${cluster.length - 5} more</div>`;
                 }
                 html += '</div>';
-                
+
                 clusterPopup.setLatLng(e.latlng).setContent(html).openOn(map);
             });
 
@@ -1022,7 +1022,7 @@
             line.on('mouseout', function () {
                 clearMapHighlights();
             });
-                 
+
             runningMapLines.push(line);
 
             // Pre-calculate search string to avoid re-evaluating in loops during filtering
@@ -1037,23 +1037,23 @@
             // Click to zoom map AND expand stats
             listItem.onclick = () => {
                 clearStartEndMarkers();
-                
+
                 // NEW: Revert the style of the previously active line (if any)
                 if (activeActivityId) {
                     const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
                     resetLineStyle(prevLine);
                 }
-            
+
                 // NEW: Set this activity as the actively selected one
                 activeActivityId = activity.id;
 
                 map.fitBounds(line.getBounds(), { padding: [50, 50] });
-                
+
                 document.querySelectorAll('.extended-stats').forEach(el => {
                     el.style.display = 'none';
                 });
                 document.querySelectorAll('.activity-item').forEach(el => el.setAttribute('aria-expanded', 'false'));
-                
+
                 listItem.querySelector('.extended-stats').style.display = 'block';
                 listItem.setAttribute('aria-expanded', 'true');
 
@@ -1068,12 +1068,12 @@
                     currentStartMarker = L.marker(startCoord, { icon: startIcon, interactive: false }).addTo(map);
                     currentEndMarker = L.marker(endCoord, { icon: endIcon, interactive: false }).addTo(map);
                 }
-                
+
                 // NEW: Force the highlight to stay active
                 line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
                 line.bringToFront();
             };
-            
+
             // Keyboard event listener for accessibility
             listItem.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -1085,7 +1085,7 @@
             // Hover to highlight on map
             listItem.addEventListener('mouseenter', () => {
                 line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
-                line.bringToFront(); 
+                line.bringToFront();
             });
 
             listItem.addEventListener('mouseleave', () => {
@@ -1224,9 +1224,6 @@
 
         filterSidebar();
         loadData("ALL");
-
-        // Return focus to a logical element to prevent keyboard focus loss
-        document.getElementById('search-box').focus();
     }
 
     // 1. If a user clicks a broad category, uncheck all specific sports
@@ -1248,11 +1245,11 @@
     // 3. The Master Filter: Responsible for coordinating all visible elements (map layers and sidebar list)
     function filterSidebar() {
         const query = document.getElementById('search-box').value.toLowerCase();
-        
+
         const specificSportsArr = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
         const specificSportsSet = specificSportsArr.length > 0 ? new Set(specificSportsArr) : null;
         const specificColor = document.getElementById('color-specific').value;
-        
+
         const categoryVisibility = {
             Cycling: document.getElementById('filter-cycling').checked,
             Pavement: document.getElementById('filter-pavement').checked,
@@ -1278,7 +1275,7 @@
             const act = line.activityData;
             const activityId = String(act.id);
             const item = line.sidebarItem;
-            
+
             let isVisible = false;
             let itemIsVisible = false;
 
@@ -1301,7 +1298,7 @@
             if (selectedActivityIds !== null) {
                 isVisible = selectedActivityIds.includes(activityId);
                 itemIsVisible = isVisible; // Sidebar logic matches map cluster exactly
-                
+
                 // Maintain correct colors for the isolated lines
                 if (isVisible && specificSportsSet !== null && specificSportsSet.has(type)) {
                      applyStyle(specificColor);
@@ -1314,7 +1311,7 @@
                 const searchString = act.searchString || `${act.name} ${act.type} ${act.year}`.toLowerCase();
                 // ⚡ Bolt Optimization: skip string evaluation if query is empty
                 const matchesSearch = query === '' || searchString.includes(query);
-                
+
                 let matchesType = false;
 
                 if (specificSportsSet !== null) {
@@ -1326,7 +1323,7 @@
                     // Check against broad category filters
                     matchesType = categoryVisibility[line.sportCategory];
                 }
-                
+
                 isVisible = matchesSearch && matchesType;
                 itemIsVisible = isVisible;
             }
@@ -1337,7 +1334,7 @@
             } else {
                 if (config.group.hasLayer(line)) config.group.removeLayer(line);
             }
-            
+
             // Toggle sidebar item visibility via stored reference
             // ⚡ Bolt Optimization: Only update DOM display style if it's actually changing
             // to prevent browser layout thrashing.
@@ -1372,7 +1369,7 @@
         const container = document.getElementById('filter-container');
         const icon = document.getElementById('filter-icon');
         const btn = document.getElementById('filter-toggle-btn');
-        
+
         if (container.style.display === 'none' || container.style.display === '') {
             container.style.display = 'flex';
             icon.textContent = '▲';
@@ -1388,23 +1385,23 @@
         runningMapLines.forEach(line => {
             let match = false;
             const t = line.sportType;
-            
+
             if (baseType === 'Cycling' && (t.includes('Ride') || t.includes('VirtualRide') || t.includes('EBike'))) match = true;
             else if (baseType === 'Pavement' && (t === 'Run' || t === 'Walk')) match = true;
             else if (baseType === 'Dirt' && (t === 'Hike' || t === 'TrailRun')) match = true;
             else if (baseType === 'Swim' && t.includes('Swim')) match = true;
             else if (baseType === 'Other' && !t.includes('Ride') && !t.includes('VirtualRide') && !t.includes('EBike') && t !== 'Run' && t !== 'Walk' && t !== 'Hike' && t !== 'TrailRun' && !t.includes('Swim')) match = true;
-            
+
             // NEW: Ensure we don't accidentally override the currently active yellow highlight
             if (match && activeActivityId !== line.activityData.id) {
-                line.setStyle({ color: newColor }); 
+                line.setStyle({ color: newColor });
             }
         });
     }
 
     function updateSpecificSportColor(newColor) {
         const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
-        
+
         if (specificSports.length > 0) {
             runningMapLines.forEach(line => {
                 // NEW: Ensure we don't accidentally override the currently active yellow highlight
