@@ -68,3 +68,8 @@
 **Learning:** When checking spatial intersections on polylines segment-by-segment (like finding map lines near a cursor click), repeatedly calling `map.project(coords[i])` and `map.project(coords[i+1])` inside the loop redundantly projects the same coordinate twice.
 
 **Action:** Cache the projected end point of the previous segment to use as the starting point of the next segment. This effectively halves the number of expensive `map.project` calls and provides a measurable speedup during spatial search operations.
+## 2024-05-19 - Python Generator Slicing Optimization
+
+**Learning:** When dealing with expensive element-wise processing in Python lists (e.g., parsing and `round()` operations on floats) that are immediately followed by slice downsampling (like `[::4]`), evaluating the entire list first wastes significant processing time and memory on elements that are instantly discarded.
+
+**Action:** Replace eager list comprehensions and standard slicing with a generator expression combined with `itertools.islice`. This ensures that processing only happens for the elements that are actually retained.
