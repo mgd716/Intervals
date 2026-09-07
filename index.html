@@ -1224,6 +1224,13 @@
 
         filterSidebar();
         loadData("ALL");
+
+        // Return focus to the search box to prevent keyboard focus loss
+        // when the "Clear all filters" button disappears from the DOM.
+        const searchBox = document.getElementById('search-box');
+        if (searchBox) {
+            searchBox.focus();
+        }
     }
 
     // 1. If a user clicks a broad category, uncheck all specific sports
