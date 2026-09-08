@@ -28,3 +28,8 @@
 **Vulnerability:** While primary attributes like `activity.id` and `activity.name` were being sanitized in `index.html` via `escapeHTML`, dynamically generated values derived from unvalidated database fields (such as `dateStr` constructed from `activity.start_date` or `activity.year`) were missed and injected directly into template literals. This leaves a partial XSS vulnerability.
 **Learning:** Sanitization must be applied universally to *all* dynamically generated content injected into HTML, not just obvious strings. Even values that appear to be structured data (like dates) can carry XSS payloads if the underlying data source is untrusted or improperly validated.
 **Prevention:** Apply `escapeHTML` to every variable before injecting it into DOM template literals, regardless of its expected type, unless the data has been strictly validated as a safe type (e.g., explicitly coerced to an integer) prior to injection.
+
+## 2024-08-26 - [HIGH] Unencrypted Transmission of Sensitive API Keys
+**Vulnerability:** The `update_map.py` script allowed the `SUPABASE_URL` to be configured with `http://` instead of strictly enforcing `https://`.
+**Learning:** Permitting `http://` for services that handle API keys or sensitive data allows those credentials to be transmitted in plain text over the network, making them vulnerable to interception (man-in-the-middle attacks).
+**Prevention:** Always enforce encrypted protocols (`https://`) when configuring URLs for internal or external services that require authentication or handle sensitive information. Validate the protocol strictly at initialization.
