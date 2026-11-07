@@ -12,7 +12,7 @@
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
-   
+
     <style>
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -40,6 +40,10 @@
         #map {
             flex-grow: 1;
             height: 100%;
+        }
+
+        .leaflet-tile-pane {
+        filter: grayscale(100%) opacity(0.6); /* Desaturates and fades the map so colors from activities pop*/
         }
 
         /* Fixed-width sidebar for controls and activity list */
