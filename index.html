@@ -6,8 +6,7 @@
     <title>Activity Map</title>
 
     <!-- Security: Added Content-Security-Policy to mitigate XSS and prevent unauthorized data exfiltration -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self' https://tmtqyawzmmjfydxoymry.supabase.co; object-src 'none'; base-uri 'self';">
-    <!-- Security: Control referrer information -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.openstreetmap.org; connect-src 'self' https://tmtqyawzmmjfydxoymry.supabase.co; object-src 'none'; base-uri 'self';">    <!-- Security: Control referrer information -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
     
@@ -461,9 +460,9 @@
     // ==========================================
     // Initialize Leaflet map, centered roughly on Buffalo, NY
     const map = L.map('map').setView([42.8864, -78.8784], 10); 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
-    }).addTo(map);
+   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
 
     // Grouping layers by sport category for easy batch toggling
     window.sportGroups = {
