@@ -68,3 +68,9 @@
 **Learning:** When checking spatial intersections on polylines segment-by-segment (like finding map lines near a cursor click), repeatedly calling `map.project(coords[i])` and `map.project(coords[i+1])` inside the loop redundantly projects the same coordinate twice.
 
 **Action:** Cache the projected end point of the previous segment to use as the starting point of the next segment. This effectively halves the number of expensive `map.project` calls and provides a measurable speedup during spatial search operations.
+
+## 2025-02-12 - Optimize Slice Downsampling with Itertools
+
+**Learning:** When downsampling a list after performing expensive element-wise operations (like `round()`), using a list comprehension followed by a slice `[::N]` calculates the expensive operation for all elements, even those discarded. A generator expression combined with `itertools.islice` evaluates the expensive operation only for the retained elements, significantly reducing execution time.
+
+**Action:** To optimize data processing pipelines that involve expensive element-wise operations followed by slice downsampling, use a generator expression combined with `itertools.islice` to evaluate only the retained elements lazily.
