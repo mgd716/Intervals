@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Map</title>
+
+    <!-- Security: Added Content-Security-Policy to mitigate XSS and prevent unauthorized data exfiltration -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self' https://tmtqyawzmmjfydxoymry.supabase.co; object-src 'none'; base-uri 'self';">
+    <!-- Security: Control referrer information -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Forces the mouse to pass straight through the popup */
+        .ghost-popup {
+            pointer-events: none !important;
+        }
+
+        /* Reset default margins and set full height for the page layout */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Main application wrapper, using flexbox to position map and sidebar side-by-side */
+        #app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* The Leaflet map container, flex-grow allows it to take up remaining space */
+        #map {
+            flex-grow: 1;
+            height: 100%;
+        }
+
+        /* Fixed-width sidebar for controls and activity list */
+        #sidebar {
+            width: 350px;
+            height: 100%;
+            background: #f8f9fa;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000; /* Keeps it above the Leaflet map */
+        }
+
+        /* Sidebar header containing filters and search, pinned to the top */
+        .sidebar-header {
+            padding: 10px;
+            background: #ffffff;
+            border-bottom: 1px solid #ddd;
+            flex-shrink: 0; /* Prevents the header from getting crushed when the list is long */
+        }
+
+        /* Button to toggle the visibility of map filters */
+        #filter-toggle-btn {
+            width: 100%;
+            padding: 8px 12px;
+            margin-top: 5px;
+            background-color: #f8f9fa;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            transition: background 0.2s;
+        }
+
+        #filter-toggle-btn:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Row layout for individual filter checkboxes and color pickers */
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        /* Grid layout for category filters to be side-by-side */
+        .category-filter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+            gap: 5px;
+        }
+
+        /* Minimal styling for color pickers */
+        .filter-row input[type="color"] {
+            border: none;
+            width: 20px;
+            height: 24px;
+            padding: 0;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        /* Container for all sport-specific filters (hidden by default) */
+        .sport-filters {
+            display: none;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #444;
+        }
+
+        /* Container for side-by-side dropdowns */
+        .dropdown-row {
+            display: flex;
+            gap: 5px;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        /* Styling for text search box and dropdowns */
+        #search-box, #year-select, #sort-select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #search-box {
+            margin-top: 5px;
+        }
+
+        /* Keyboard navigation focus styles */
+        #search-box:focus-visible,
+        #year-select:focus-visible,
+        #sort-select:focus-visible,
+        #sort-dir-btn:focus-visible,
+        #filter-toggle-btn:focus-visible,
+        input[type="color"]:focus-visible,
+        input[type="checkbox"]:focus-visible,
+        .activity-item:focus-visible,
+        #clear-filters-btn:focus-visible {
+            outline: 2px solid #0066ff;
+            outline-offset: 2px;
+        }
+
+        /* Label alignment for filter checkboxes */
+        .sport-filters label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        /* Scrollable container for the list of activities */
+        #activity-list {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        /* Individual activity card styling */
+        .activity-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .activity-item:hover {
+            background: #e9ecef;
+        }
+
+        /* Activity title */
+        .activity-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        /* Activity type and date subtitle */
+        .activity-item p {
+            margin: 0 0 5px 0;
+            font-size: 12px;
+            color: #555;
+        }
+
+        /* Layout for primary activity stats (distance, time, pace) */
+        .activity-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #222;
+        }
+
+        /* Container for a single stat label and value */
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Label for an individual stat */
+        .stat-label {
+            font-size: 11px;
+            color: #777;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+    /* Consistent sizing and alignment for SVG sport icons in the sidebar list */
+        .sport-icon {
+            width: 1em;
+            height: 1em;
+            vertical-align: middle;
+            display: inline-block;
+        }
+        /* Start and End Markers */
+        .start-marker {
+            background-color: #00ff00;
+            border: 2px solid black;
+            border-radius: 50%;
+            width: 12px !important;
+            height: 12px !important;
+            margin-left: -6px !important;
+            margin-top: -6px !important;
+            box-sizing: border-box;
+        }
+
+        .end-marker {
+            background-color: white;
+            background-image:
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black),
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black);
+            background-size: 6px 6px;
+            background-position: 0 0, 3px 3px;
+            border: 2px solid black;
+            border-radius: 50%;
+            width: 14px !important;
+            height: 14px !important;
+            margin-left: -7px !important;
+            margin-top: -7px !important;
+            box-sizing: border-box;
+        }
+
+        /* ==========================================
+           MOBILE RESPONSIVENESS
+           ========================================== */
+        @media (max-width: 768px) {
+            #app-container {
+                flex-direction: column;
+                height: 100dvh;
+            }
+
+            #map {
+                width: 100%;
+                flex: 0 0 50%;
+            }
+
+            #sidebar {
+                width: 100%;
+                flex: 1;
+                height: auto;
+                border-left: none;
+                border-top: 2px solid #ccc;
+                overflow: hidden;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- SVG Definitions for Icons (Hidden) -->
+<svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <symbol id="icon-ebike" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="none" stroke="currentColor" d="M16.5 5.5h-9V6c0 5-3.5 6.5-3.5 6.5m7.5-.5a5 5 0 0 0-5-5a6 6 0 0 0-6 6a9 9 0 0 0 9 9h.5m0 0c0 1 .5 1.5.5 1.5H13M10 22c0-1 .5-1.5.5-1.5H13m0 0v3m0-3h2m-2 3h2M11.498 12a5 5 0 0 1-5 5m0 0a4.98 4.98 0 0 1-3-1m3 1a5 5 0 0 1-2.098-.46M5 3h4M20 .5h-3.5V6c0 5 3.5 6.5 3.5 6.5M18.5 17a5 5 0 1 1 0-10a5 5 0 0 1 0 10Z" /></symbol>
+        <symbol id="icon-ride" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M5 20.5A3.5 3.5 0 0 1 1.5 17A3.5 3.5 0 0 1 5 13.5A3.5 3.5 0 0 1 8.5 17A3.5 3.5 0 0 1 5 20.5M5 12a5 5 0 0 0-5 5a5 5 0 0 0 5 5a5 5 0 0 0 5-5a5 5 0 0 0-5-5m9.8-2H19V8.2h-3.2l-1.94-3.27c-.29-.5-.86-.83-1.46-.83c-.47 0-.9.19-1.2.5L7.5 8.29C7.19 8.6 7 9 7 9.5c0 .63.33 1.16.85 1.47L11.2 13v5H13v-6.5l-2.25-1.65l2.32-2.35m5.93 13a3.5 3.5 0 0 1-3.5-3.5a3.5 3.5 0 0 1 3.5-3.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m0-8.5a5 5 0 0 0-5 5a5 5 0 0 0 5 5a5 5 0 0 0 5-5a5 5 0 0 0-5-5m-3-7.2c1 0 1.8-.8 1.8-1.8S17 1.2 16 1.2S14.2 2 14.2 3S15 4.8 16 4.8" /></symbol>
+        <symbol id="icon-ski-nordic" viewBox="0 0 576 512"><path d="M0 0h576v512H0z" fill="none" /><path fill="currentColor" d="M336 96c26.5 0 48-21.5 48-48S362.5 0 336 0s-48 21.5-48 48s21.5 48 48 48m216 320c-13.2 0-24 10.7-24 24c0 13.2-10.8 24-24 24h-69.5L460 285.6c11.7-4.7 20.1-16.2 20.1-29.6c0-17.7-14.3-32-32-32h-44L378 170.8c-12.5-25.5-35.5-44.2-61.8-50.9L245 98.7c-28.3-6.8-57.8-.5-80.8 17.1l-39.7 30.4c-14 10.7-16.7 30.8-5.9 44.9c.7.9 1.7 1.3 2.4 2.1L66.9 464H24c-13.2 0-24 10.7-24 24s10.8 24 24 24h480c39.7 0 72-32.3 72-72c0-13.2-10.8-24-24-24m-260.5 48h-96.9l43.1-91l-22-13c-12.1-7.2-21.9-16.9-29.5-27.8L123.7 464H99.5l52.3-261.4c4.1-1 8.1-2.9 11.7-5.6l39.7-30.4c7.7-5.9 17.4-8 25.3-6.1l14.7 4.4l-37.5 87.4c-12.6 29.5-1.3 64 26.3 80.3l85 50.2zm110.6 0h-43.6l23.6-75.5c5.9-20.8-2.9-43.1-21.6-54.4L299.3 298l31.3-78.3l20.3 41.4c8 16.3 24.9 26.9 43.1 26.9h33.3z" /></symbol>
+        <symbol id="icon-ski" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M18.5 23q-.65 0-1.263-.1t-1.187-.3L2 17.475l.5-1.425l6.9 2.525l1.725-4.45L7.55 10.4q-.675-.7-.537-1.662T8 7.275l3.475-2q.425-.25.863-.288t.862.138q.425.15.738.475t.462.775l.325 1.075q.325 1.075 1.063 1.9t1.762 1.25l.525-1.6l1.425.45l-1.125 3.45q-1.85-.3-3.275-1.45T13 8.6l-2.525 1.45L13.5 13.5l-2.225 5.75l3.1 1.125l2.1-6.425q.35.125.7.225t.725.175l-2.125 6.55l.775.275q.45.15.938.237t1.012.088q.65 0 1.238-.125T20.875 21L22 22.125q-.8.425-1.675.65T18.5 23M15.088 5.913Q14.5 5.325 14.5 4.5t.588-1.412T16.5 2.5t1.413.588T18.5 4.5t-.587 1.413T16.5 6.5t-1.412-.587" /></symbol>
+        <symbol id="icon-boat" viewBox="0 0 15 15"><path d="M0 0h15v15H0z" fill="none" /><path fill="currentColor" d="m2.91.79l.58.58c.55.55.96 1.22 1.21 1.95l.33 1l5.65 5.65l1 .33c.73.25 1.4.66 1.95 1.21l.58.58c.39.39.39 1.02 0 1.41l-.71.71a.996.996 0 0 1-1.41 0l-.58-.58c-.55-.55-.96-1.22-1.21-1.95l-.33-1l-5.65-5.65l-1-.33c-.73-.25-1.4-.66-1.95-1.21l-.58-.58a.996.996 0 0 1 0-1.41L1.5.79a.996.996 0 0 1 1.41 0m1.44 5.32l1.4 1.41c-.19.25-.36.51-.49.76c-.14.25-.09.56.11.77l.58.58c.2.2.52.25.77.11L7 9.58c.16-.1.32-.21.48-.34l1.41 1.41c-2.11 1.82-4.59 3.06-7.45 3.72l-.56.12a.33.33 0 0 1-.38-.27c0-.04 0-.08.01-.12c.63-3.09 1.91-5.76 3.84-7.99M14.5.77c0 .04 0 .08-.01.12c-.63 3.1-1.91 5.76-3.84 8L9.24 7.48c.2-.26.36-.51.5-.76c.14-.26.09-.57-.11-.78l-.58-.58c-.2-.2-.52-.24-.77-.11L8 5.42c-.16.1-.32.21-.49.33l-1.4-1.4c2.1-1.82 4.59-3.06 7.45-3.73l.56-.11c.18-.04.35.08.38.26" /></symbol>
+        <symbol id="icon-tennis" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M20 18a2 2 0 1 0 0 4a2 2 0 1 0 0-4m-.92-2.92c3.4-3.4 3.89-8.45 1.09-11.25S12.32 1.52 8.92 4.92C6.2 7.64 5.35 11.4 6.54 14.23c0 .5-.1.99-.32 1.49c-.31.56-.65 1.11-1 1.64l-2.9 2.9c-.29.29-.29.77 0 1.06l.35.35c.29.29.77.29 1.06 0l2.9-2.9c.53-.35 1.08-.69 1.64-1c.5-.22.98-.31 1.49-.32c.83.35 1.75.53 2.69.53c2.27 0 4.71-.99 6.62-2.91Zm-6.72.92l.64-.64l.54.54c-.4.07-.8.11-1.19.1ZM8.1 10.46l.54.54l-.64.64c0-.39.03-.79.1-1.19Zm6.9-5.1l1.65 1.65L15 8.66l-1.65-1.65zm-2 1.29l-1.37-1.37c.72-.49 1.49-.83 2.25-1.04l.77.77L13 6.66Zm6.9 2.9l-.54-.54l.64-.64c0 .39-.03.79-.1 1.19Zm-6.9 5.1L11.35 13L13 11.35L14.65 13zm2-1.29l1.37 1.37c-.72.48-1.49.83-2.25 1.04l-.77-.77L15 13.35Zm-5.57 1.57L11 13.36l1.65 1.65l-.95.95c-.86-.12-1.64-.46-2.27-1.02Zm-.35-.35c-.56-.63-.9-1.42-1.02-2.27l.95-.95l1.65 1.65l-1.57 1.57Zm4.28-3.57l1.65-1.65l1.65 1.65l-1.65 1.65zm2-2l1.65-1.65l1.65 1.65l-1.65 1.65zm3.65.35l.77.77c-.21.76-.56 1.53-1.04 2.25l-1.37-1.37l1.65-1.65Zm0-.71L17.36 7l1.57-1.57c.56.63.9 1.42 1.02 2.27l-.95.95Zm-2-2L15.36 5l.94-.94c.86.12 1.63.46 2.27 1.02l-1.56 1.56ZM14.66 9l-1.65 1.65L11.36 9l1.65-1.65zm-2 2l-1.65 1.65L9.36 11l1.65-1.65zm-3.65-.35l-.77-.77c.21-.76.56-1.53 1.04-2.25L10.65 9L9 10.65Zm7.78 3.78L15.36 13l1.65-1.65l1.43 1.43c-.23.3-.48.6-.76.88s-.58.53-.88.76ZM15.55 4h.1l-.64.64l-.54-.54c.36-.07.73-.11 1.08-.11Zm-4.32 1.58l1.43 1.43l-1.65 1.65l-1.43-1.43c.23-.3.48-.6.76-.88s.58-.53.88-.76Z" /></symbol>
+        <symbol id="icon-hike" viewBox="0 0 256 256"><path d="M0 0h256v256H0z" fill="none" /><g fill="currentColor"><path d="M176 48a24 24 0 1 1-24-24a24 24 0 0 1 24 24M44 132l28 12l24-56l-28-12Z" opacity=".2" /><path d="M152 80a32 32 0 1 0-32-32a32 32 0 0 0 32 32m0-48a16 16 0 1 1-16 16a16 16 0 0 1 16-16m48 112v88a8 8 0 0 1-16 0v-80.34c-25.75-2.25-34.35-15.52-42-27.36c-2.85-4.39-5.56-8.57-9.13-12.19l-13.4 30.81l37.2 26.57A8 8 0 0 1 160 176v56a8 8 0 0 1-16 0v-51.88l-31.07-22.2l-33.59 77.27A8 8 0 0 1 72 240a7.8 7.8 0 0 1-3.19-.67a8 8 0 0 1-4.15-10.52L122.19 96.5a8 8 0 0 1 11-3.92a41 41 0 0 1 8 5.47c6.37 5.52 10.51 11.91 14.16 17.55c7.68 11.84 13.23 20.4 36.6 20.4a8 8 0 0 1 8.05 8m-128 8a8 8 0 0 0 7.36-4.85l24-56a8 8 0 0 0-4.2-10.5l-28-12a8 8 0 0 0-10.5 4.2l-24 56a8 8 0 0 0 4.2 10.5l28 12A8 8 0 0 0 72 152m-17.49-24.2L72.2 86.5l13.3 5.7l-17.7 41.29Z" /></g></symbol>
+        <symbol id="icon-trailrun" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M5.55 22.025q-.8 0-1.537-.3t-1.313-.9l-.175-.175q-.225-.2-.287-.5t.062-.575L7.15 7.2q.2-.5.688-.762T8.85 6.3l1.45.275q.425.1.813-.062t.662-.438q.35-.375.463-.788t-.013-.837l-.125-.375q-.125-.4-.037-.812t.387-.713l1.075-1.075q.425-.45 1.063-.45t1.062.425l4.525 4.6q.55.575.563 1.363t-.513 1.362l.475.475q.15.175.263.363t.112.387q0 .175-.075.35t-.275.375q-.3.275-.712.288t-.713-.288l-.45-.475l-.7.725l.45.45q.275.275.275.7t-.275.7q-.3.275-.712.288t-.713-.288l-.45-.425l-2.8 2.85l.425.4q.3.3.3.713t-.3.712q-.3.275-.712.288t-.713-.288l-.4-.425l-.7.725l.4.4q.275.275.275.7t-.275.7q-.3.275-.712.287t-.713-.287l-.4-.375l-.7.7l.4.375q.275.3.275.713t-.275.712q-.3.275-.712.288t-.713-.288l-.4-.4q-.575.575-1.263.85t-1.462.275M4.125 14.95q.125-.275.2-.487l.075-.213l-.55 1.4l.088-.212q.087-.213.187-.488m.975-2.5q.125-.275.2-.487l.075-.213l-.55 1.4l.088-.213q.087-.212.187-.487m.975-2.5q.125-.275.2-.475l.075-.2l-.55 1.375l.088-.212q.087-.213.187-.488M5.55 20q.425 0 .788-.15t.637-.45L18.75 7.45L14.6 3.225l-.5.5q.3 1 .113 1.95T13.2 7.45q-.65.65-1.5.963t-1.775.112l-1.025-.2l-.625 1.525l.575.2q.275.125.4.4t.025.55q-.1.3-.375.45t-.575.025l-.6-.225l-.425 1.1l.475.175q.275.125.413.4t.037.55q-.1.3-.387.438t-.588.012l-.5-.175l-.425 1.1l.4.15q.275.125.4.388t.025.537q-.1.3-.387.45t-.588.025l-.4-.15l-1.35 3.4q.25.175.538.263T5.55 20m6.05-8.4" /></symbol>
+        <symbol id="icon-run" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 5.5c1.09 0 2-.92 2-2a2 2 0 0 0-2-2c-1.11 0-2 .88-2 2c0 1.08.89 2 2 2M9.89 19.38l1-4.38L13 17v6h2v-7.5l-2.11-2l.61-3A7.3 7.3 0 0 0 19 13v-2c-1.91 0-3.5-1-4.31-2.42l-1-1.58c-.4-.62-1-1-1.69-1c-.31 0-.5.08-.81.08L6 8.28V13h2V9.58l1.79-.7L8.19 17l-4.9-1l-.4 2z" /></symbol>
+        <symbol id="icon-golf" viewBox="0 0 15 15"><path d="M0 0h15v15H0z" fill="none" /><path fill="currentColor" d="M3.4 1.1v.2c0 .4.3.7.7.7c.3 0 .5-.2.6-.5l.2-.5l5.6 2.3L6.6 6c-.4.3-.4.7-.3 1.1l.9 2.1l-1.3 3.9c-.2.5.2.9.6.9c.3 0 .5-.1.6-.5l1.4-4l.1.3v3.5s0 .7.7.7s.7-.7.7-.7V10c0-.2 0-.3-.1-.5L8.5 6.1l2.7-1.9c.2-.2.4-.3.4-.6s-.2-.5-.4-.6L4 .1c-.088 0-.118.018-.2.1zM5.5 3C4.7 3 4 3.7 4 4.5S4.7 6 5.5 6S7 5.3 7 4.5S6.3 3 5.5 3" /></symbol>
+        <symbol id="icon-walk" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.12 10H19V8.2h-3.62l-2-3.33c-.3-.5-.84-.84-1.46-.84c-.18 0-.34.03-.5.08L6 5.8V11h1.8V7.33l2.11-.66L6 22h1.8l2.87-8.11L13 17v5h1.8v-6.41l-2.49-4.54l.73-2.87M14 3.8c1 0 1.8-.8 1.8-1.8S15 .2 14 .2S12.2 1 12.2 2S13 3.8 14 3.8" /></symbol>
+        <symbol id="icon-swim" viewBox="0 0 32 32"><path d="M0 0h32v32H0z" fill="none" /><path fill="currentColor" d="M30 26h-2a4.93 4.93 0 0 1-4-1.987a5.02 5.02 0 0 1-8 0a5.02 5.02 0 0 1-8 0A4.93 4.93 0 0 1 4 26H2v-2h2a3.44 3.44 0 0 0 3.053-2.321A.97.97 0 0 1 8 21a1.01 1.01 0 0 1 .949.684A3.44 3.44 0 0 0 12 24a3.44 3.44 0 0 0 3.053-2.321A.99.99 0 0 1 16 21a1.01 1.01 0 0 1 .949.684A3.44 3.44 0 0 0 20 24a3.44 3.44 0 0 0 3.053-2.321a1 1 0 0 1 1.896.005A3.44 3.44 0 0 0 28 24h2Zm-7-8.414l-8.707-8.707A2.98 2.98 0 0 0 12.171 8H4v2h8.171a1 1 0 0 1 .708.293L15.586 13L10 18.586L11.414 20L17 14.414L21.586 19ZM20 10a4 4 0 1 1 4 4a4.004 4.004 0 0 1-4-4m2 0a2 2 0 1 0 2-2a2 2 0 0 0-2 2" /></symbol>
+        <symbol id="icon-fallback" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    </defs>
+</svg>
+
+<!-- Main application wrapper -->
+<div id="app-container">
+    <!-- Map container -->
+    <div id="map"></div>
+
+    <!-- Sidebar for controls and activity list -->
+    <div id="sidebar">
+        <!-- Live region for screen reader announcements about filtering results -->
+        <div id="search-announcer" class="visually-hidden" aria-live="polite" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;"></div>
+
+        <!-- Static header section containing filters -->
+        <div class="sidebar-header">
+            <div class="dropdown-row">
+                <!-- Year filter dropdown -->
+                <select id="year-select" aria-label="Filter activities by year" onchange="filterMapByYear()">
+                    <option value="ALL">Show All Years</option>
+                </select>
+
+                <!-- Sort dropdown -->
+                <div style="display: flex; gap: 5px; width: 100%;">
+                    <select id="sort-select" aria-label="Sort activities by date, distance, time, or pace" onchange="onSortSelectChange()">
+                        <option value="date">Sort: Date</option>
+                        <option value="distance">Sort: Distance</option>
+                        <option value="time">Sort: Time</option>
+                        <option value="pace">Sort: Pace</option>
+                    </select>
+                    <button id="sort-dir-btn" aria-label="Sort ascending" onclick="toggleSortDirection()" style="background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0 8px; display: flex; align-items: center; justify-content: center;" title="Sort ascending">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="m18 21l-4-4h3V7h-3l4-4l4 4h-3v10h3M2 19v-2h10v2M2 13v-2h7v2M2 7V5h4v2z" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Text search for activities -->
+            <input type="search" id="search-box" aria-label="Search activities by name or type" aria-keyshortcuts="/" placeholder="Search activities... (Press '/')" oninput="debouncedFilterSidebar()" maxlength="100">
+
+            <!-- Toggle button for expanding/collapsing map filters -->
+            <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filter-container" onclick="toggleFilters()">
+                Map Filters <span id="filter-icon" aria-hidden="true">▼</span>
+            </button>
+
+            <!-- Container for filtering options (initially hidden) -->
+            <div class="sport-filters" id="filter-container">
+                <!-- Broad category filters (Cycling, Pavement, Dirt, etc.) -->
+                <div style="width: 100%; margin-bottom: 5px;"><strong>Category Filters</strong></div>
+                <div class="category-filter-grid">
+                    <div class="filter-row">
+                        <input type="checkbox" id="filter-cycling" value="Cycling" checked onchange="resetDropdownAndFilter()">
+                        <input type="color" id="color-cycling" aria-label="Choose color for cycling activities" value="#fc4c02" onchange="updateSportColor('Cycling', this.value)">
+                        <label for="filter-cycling">Cycling</label>
+                    </div>
+                    <div class="filter-row">
+                        <input type="checkbox" id="filter-pavement" value="Pavement" checked onchange="resetDropdownAndFilter()">
+                        <input type="color" id="color-pavement" aria-label="Choose color for pavement activities" value="#007fb6" onchange="updateSportColor('Pavement', this.value)">
+                        <label for="filter-pavement">Pavement</label>
+                    </div>
+                    <div class="filter-row">
+                        <input type="checkbox" id="filter-dirt" value="Dirt" checked onchange="resetDropdownAndFilter()">
+                        <input type="color" id="color-dirt" aria-label="Choose color for dirt activities" value="#8b4513" onchange="updateSportColor('Dirt', this.value)">
+                        <label for="filter-dirt">Dirt</label>
+                    </div>
+                    <div class="filter-row">
+                        <input type="checkbox" id="filter-swim" value="Swim" checked onchange="resetDropdownAndFilter()">
+                        <input type="color" id="color-swim" aria-label="Choose color for swimming activities" value="#00b300" onchange="updateSportColor('Swim', this.value)">
+                        <label for="filter-swim">Swimming</label>
+                    </div>
+                    <div class="filter-row">
+                        <input type="checkbox" id="filter-other" value="Other" checked onchange="resetDropdownAndFilter()">
+                        <input type="color" id="color-other" aria-label="Choose color for other activities" value="#666666" onchange="updateSportColor('Other', this.value)">
+                        <label for="filter-other">Other</label>
+                    </div>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
+
+                <!-- Scrollable Specific Sport Box -->
+                <div style="width: 100%; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                    <strong>Specific Sport Override</strong>
+                    <!-- The master color picker for specific sports -->
+                    <input type="color" id="color-specific" aria-label="Choose color for specific sport override" value="#e83e8c" onchange="updateSpecificSportColor(this.value)" style="border: none; width: 20px; height: 24px; padding: 0; cursor: pointer; background: transparent;">
+                </div>
+                <!-- Container for dynamically injected specific sport checkboxes -->
+                <div id="specific-sport-list" style="width: 100%; max-height: 75px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; padding: 5px; background: #fff; box-sizing: border-box; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <!-- JavaScript will inject the checkboxes here -->
+                </div>
+
+                <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
+
+                <!-- Grid tile overlays (Squadrats) -->
+                <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadrats" onchange="drawTileGrid()"> Squadrats (14)</label>
+                <label style="display:flex; gap:4px;"><input type="checkbox" id="filter-squadratinhos" onchange="drawTileGrid()"> Squadratinhos (17)</label>
+            </div>
+        </div>
+
+        <!-- Scrollable container for the dynamic list of activity items -->
+        <div id="activity-list"></div>
+
+        <!-- Loading State UI -->
+        <div id="loading-state" role="status" style="display: none; padding: 40px 20px; text-align: center; color: #666; flex-grow: 1; overflow-y: auto;">
+            <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; color: #0066ff; animation: spin 1s linear infinite;">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Loading activities...</h3>
+            <p style="margin: 0 0 20px 0; font-size: 14px;">Please wait while we fetch your data.</p>
+        </div>
+
+        <!-- Empty State UI -->
+        <div id="empty-state" role="status" style="display: none; padding: 40px 20px; text-align: center; color: #666; flex-grow: 1; overflow-y: auto;">
+            <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; color: #999;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">No activities found</h3>
+            <p style="margin: 0 0 20px 0; font-size: 14px;">Try adjusting your filters or search terms.</p>
+            <button id="clear-filters-btn" onclick="clearFilters()" style="background: #0066ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s;">
+                Clear all filters
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet & Supabase JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3" integrity="sha384-l8ah+VgaWtk1mvOe9VC+OirC6qHFF4yH7l7mKRidV9MSti3E9F463bMp6ZVN4kuC" crossorigin="anonymous"></script>
+
+<script>
+    // Helper to sanitize untrusted input to prevent XSS
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // ==========================================
+    // 1. CONFIGURATION
+    // ==========================================
+    const SUPABASE_URL = 'https://tmtqyawzmmjfydxoymry.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_cMso9XTCykk7W2BYWxAGPw_xzxHCufa';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Popup configuration used for hover clusters (non-interactive)
+    const clusterPopup = L.popup({
+        autoPan: false,
+        closeButton: false,
+        className: 'ghost-popup',
+        offset: [0, -15]
+    });
+
+    // ==========================================
+    // 2. MAP SETUP
+    // ==========================================
+    // Initialize Leaflet map, centered roughly on Buffalo, NY
+    const map = L.map('map').setView([42.8864, -78.8784], 10);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+    }).addTo(map);
+
+    // Grouping layers by sport category for easy batch toggling
+    window.sportGroups = {
+        Cycling: L.featureGroup().addTo(map),
+        Pavement: L.featureGroup().addTo(map),
+        Dirt: L.featureGroup().addTo(map),
+        Swim: L.featureGroup().addTo(map),
+        Other: L.featureGroup().addTo(map)
+    };
+
+    let gridLayerGroup = L.featureGroup().addTo(map);
+    let runningMapLines = [];
+    const visitedTiles = new Set();
+
+    // ==========================================
+    // CLUSTER TRACKING & HIGHLIGHTING
+    // ==========================================
+    // State variables for managing selected and highlighted lines
+    let selectedActivityIds = null;
+    let highlightedLines = [];
+    let activeActivityId = null; // NEW: Track the currently active activity highlight
+
+    // State variables for start and end markers
+    let currentStartMarker = null;
+    let currentEndMarker = null;
+
+    function clearStartEndMarkers() {
+        if (currentStartMarker) {
+            map.removeLayer(currentStartMarker);
+            currentStartMarker = null;
+        }
+        if (currentEndMarker) {
+            map.removeLayer(currentEndMarker);
+            currentEndMarker = null;
+        }
+    }
+
+    // NEW HELPER: Reverts a line to its proper specific or category color
+    function resetLineStyle(l) {
+        if (!l || !l.activityData) return;
+        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+        const specificColor = document.getElementById('color-specific').value;
+
+        const type = l.activityData.type;
+        let restoreColor = getSportConfig(type).color;
+
+        // If this sport is selected in the specific list, restore to the custom color instead
+        if (specificSports.length > 0 && specificSports.includes(type)) {
+            restoreColor = specificColor;
+        }
+
+        l.setStyle({ color: restoreColor, weight: 4, opacity: 0.30 });
+    }
+
+   // Resets the map styling for any lines that were currently highlighted
+   function clearMapHighlights() {
+        highlightedLines.forEach(l => {
+            // NEW: Skip resetting if this line is the active clicked activity
+            if (activeActivityId && l.activityData.id === activeActivityId) return;
+            resetLineStyle(l);
+        });
+        highlightedLines = [];
+    }
+
+    // Map click handler to select a specific cluster of lines
+    map.on('click', function(e) {
+        // Find lines within a short pixel distance from the click
+        const cluster = getOverlappingLines(e.latlng, 15);
+
+        clearStartEndMarkers();
+
+        // NEW: Unhighlight previously active line when map is clicked
+        if (activeActivityId) {
+            const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
+            resetLineStyle(prevLine);
+            activeActivityId = null;
+        }
+
+        if (cluster.length > 0) {
+            // Isolate map to show only clicked activities
+            selectedActivityIds = cluster.map(l => String(l.activityData.id));
+            document.getElementById('search-box').placeholder = `Filtered to ${cluster.length} activities (Click empty map to clear)`;
+
+            // Scroll to the top of the sidebar
+            document.getElementById('activity-list').scrollTop = 0;
+
+            // Expand the extended stats section for clicked activities in the sidebar
+            document.querySelectorAll('.extended-stats').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.activity-item').forEach(el => el.setAttribute('aria-expanded', 'false'));
+            selectedActivityIds.forEach(id => {
+                const card = document.getElementById(`sidebar-item-${id}`);
+                if (card) {
+                    card.querySelector('.extended-stats').style.display = 'block';
+                    card.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+        } else {
+            // If click is empty, reset view to all activities
+            selectedActivityIds = null;
+            document.getElementById('search-box').placeholder = "Search activities... (Press '/')";
+        }
+        // Apply the new visual state
+        filterSidebar();
+    });
+
+    function getSportConfig(type) {
+        // Safety guard prevents the map from crashing if an activity has no type
+        if (!type) type = 'Other';
+
+        if (type.includes('Ride') || type.includes('VirtualRide') || type.includes('EBike')) return { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling, category: 'Cycling' };
+        if (type === 'Run' || type === 'Walk') return { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement, category: 'Pavement' };
+        if (type === 'Hike' || type === 'TrailRun') return { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt, category: 'Dirt' };
+        if (type.includes('Swim')) return { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim, category: 'Swim' };
+
+        return { color: document.getElementById('color-other').value, group: window.sportGroups.Other, category: 'Other' };
+    }
+
+    // Maps a specific sport type string to its corresponding category color and layer group
+   function getSportIcon(type) {
+       if (!type) type = 'Other';
+       let iconId = 'icon-fallback';
+
+        if (type.includes('EBike')) iconId = 'icon-ebike';
+        else if (type.includes('Ride') || type.includes('VirtualRide')) iconId = 'icon-ride';
+        else if (type.includes('NordicSki') || type.includes('BackcountrySki')) iconId = 'icon-ski-nordic';
+        else if (type.includes('Ski') || type.includes('Snowboard')) iconId = 'icon-ski';
+        else if (type.includes('Kayak') || type.includes('Row')) iconId = 'icon-boat';
+        else if (type === 'Tennis') iconId = 'icon-tennis';
+        else if (type === 'Hike') iconId = 'icon-hike';
+        else if (type === 'TrailRun') iconId = 'icon-trailrun';
+        else if (type === 'Run') iconId = 'icon-run';
+        else if (type === 'Golf') iconId = 'icon-golf';
+        else if (type === 'Walk') iconId = 'icon-walk';
+        else if (type.includes('Swim')) iconId = 'icon-swim';
+
+        return `<svg class="sport-icon" aria-hidden="true"><use href="#${iconId}"></use></svg>`;
+    }
+
+    // ==========================================
+    // 3. TILE GRID LOGIC
+    // ==========================================
+    function drawGridForZoom(targetZoom, bounds, baseColor) {
+        if (map.getZoom() < 10) return;
+        const nwPoint = map.project(bounds.getNorthWest(), targetZoom);
+        const sePoint = map.project(bounds.getSouthEast(), targetZoom);
+
+        const minX = Math.floor(nwPoint.x / 256);
+        const maxX = Math.floor(sePoint.x / 256);
+        const minY = Math.floor(nwPoint.y / 256);
+        const maxY = Math.floor(sePoint.y / 256);
+
+        const totalTiles = (maxX - minX + 1) * (maxY - minY + 1);
+        if (totalTiles > 5000) {
+            return;
+        }
+
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                const tileNw = map.unproject(L.point(x * 256, y * 256), targetZoom);
+                const tileSe = map.unproject(L.point((x + 1) * 256, (y + 1) * 256), targetZoom);
+
+                const tileKey = `${targetZoom}_${x}_${y}`;
+                const isVisited = visitedTiles.has(tileKey);
+
+                const currentStyle = {
+                    color: baseColor,
+                    weight: 1,
+                    opacity: 0.3,
+                    fillOpacity: 0,
+                    interactive: false
+                };
+
+                if (isVisited) {
+                    currentStyle.fillColor = baseColor;
+                    currentStyle.fillOpacity = 0.2;
+                }
+
+                L.rectangle(L.latLngBounds(tileNw, tileSe), currentStyle).addTo(gridLayerGroup);
+            }
+        }
+    }
+
+    function drawTileGrid() {
+        gridLayerGroup.clearLayers();
+        const bounds = map.getBounds();
+
+        const show14 = document.getElementById('filter-squadrats').checked;
+        const show17 = document.getElementById('filter-squadratinhos').checked;
+
+        if (show14) {
+            drawGridForZoom(14, bounds, "#ff7800");
+        }
+        if (show17) {
+            drawGridForZoom(17, bounds, "#0066ff");
+        }
+    }
+
+    map.on('moveend', drawTileGrid);
+
+    // ==========================================
+    // 4. DATA LOADING & UI
+    // ==========================================
+
+    // SPATIAL SEARCH: Given a lat/lng, find all lines on the map that intersect within a specific pixel tolerance
+    function getOverlappingLines(latlng, tolerancePixels = 10) {
+        // Project map coordinates into pixels for distance calculation
+        const point = map.project(latlng);
+        const matches = [];
+
+        // ⚡ Bolt Optimization: Pre-calculate a bounding box around the click
+        // to fast-fail intersection checks without creating new padded bounds for every line
+        const clickBounds = L.latLngBounds(
+            [latlng.lat - 0.01, latlng.lng - 0.01],
+            [latlng.lat + 0.01, latlng.lng + 0.01]
+        );
+
+        runningMapLines.forEach(line => {
+            if (!map.hasLayer(line)) return;
+
+            // Fast bounding box check to exclude lines far away
+            const bounds = line.getBounds();
+            if (!bounds.isValid() || !clickBounds.intersects(bounds)) return;
+
+            // Detailed segment-by-segment check if inside bounding box
+            const coords = line.getLatLngs();
+            if (coords.length > 0) {
+                // ⚡ Bolt Optimization: Cache the projected start point to halve map.project calls
+                let p1 = map.project(coords[0]);
+                for (let i = 0; i < coords.length - 1; i++) {
+                    const p2 = map.project(coords[i+1]);
+                    if (L.LineUtil.pointToSegmentDistance(point, p1, p2) <= tolerancePixels) {
+                        matches.push(line);
+                        break;
+                    }
+                    p1 = p2;
+                }
+            }
+        });
+        return matches;
+    }
+
+    // We no longer fetch years separately; we populate them during the initial loadData("ALL") to avoid redundant API calls.
+    function initDropdown() {
+        loadData("ALL");
+    }
+
+    // Safely load ALL map data
+    async function loadData(targetYear) {
+        // Show loading state
+        document.getElementById('loading-state').style.display = 'block';
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('activity-list').style.display = 'none';
+        document.getElementById('sidebar').setAttribute('aria-busy', 'true');
+
+        // Yield to event loop so browser paints loading state
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        runningMapLines.forEach(line => line.remove());
+        runningMapLines = [];
+        visitedTiles.clear();
+
+        const listContainer = document.getElementById('activity-list');
+        listContainer.innerHTML = '';
+
+        let start = 0;
+        const chunkSize = 1000;
+        let uniqueTypesSet = new Set();
+        let isFirstBatch = true;
+        let allYearsSet = new Set();
+
+        const specificListContainer = document.getElementById('specific-sport-list');
+        specificListContainer.innerHTML = '';
+
+        while (true) {
+            // Sort directly in the database
+            // ⚡ Bolt Optimization: Querying native columns (distance, moving_time, elapsed_time) instead of JSONB parsing (raw_data->distance)
+            // speeds up the database query (from ~450ms to ~250ms per 100 items limit test) by avoiding runtime JSON evaluation.
+            let query = _supabase.from('activities')
+                .select('id, name, type, start_date, year, coordinates, visited_tiles, average_heartrate, average_watts, total_elevation_gain, distance, moving_time, elapsed_time')
+                .order('start_date', { ascending: false, nullsFirst: false })
+                .range(start, start + chunkSize - 1);
+
+            if (targetYear !== "ALL") {
+                query = query.eq('year', parseInt(targetYear));
+            }
+
+            const { data, error } = await query;
+            if (error) { console.error("Database query failed:", error); break; }
+            if (!data || data.length === 0) break;
+
+            data.forEach(activity => {
+                if (activity.type) {
+                    uniqueTypesSet.add(activity.type);
+                }
+                if (activity.year) {
+                    allYearsSet.add(activity.year);
+                }
+            });
+
+            // Immediately process and render the new batch of data
+            processAndRenderBatch(data);
+
+            if (isFirstBatch) {
+                if (runningMapLines.length > 0) {
+                    const group = L.featureGroup(runningMapLines);
+                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                }
+                isFirstBatch = false;
+            }
+
+            if (data.length < chunkSize) break;
+            start += chunkSize;
+        }
+
+        sortActivities();
+        filterSidebar();
+
+        // Populate year dropdown on initial load
+        if (targetYear === "ALL") {
+            const dropdown = document.getElementById('year-select');
+            if (dropdown.options.length === 1) {
+                const uniqueYears = [...allYearsSet].sort((a, b) => b - a);
+                uniqueYears.forEach(year => {
+                    if (year > 0) {
+                        const opt = document.createElement('option');
+                        opt.value = year; opt.textContent = year;
+                        dropdown.appendChild(opt);
+                    }
+                });
+            }
+        }
+
+        // =========================================================
+        // BUILD DYNAMIC SCROLLABLE CHECKBOXES
+        // Populate the Specific Sport Override filter box with all discovered types
+        // =========================================================
+        const uniqueTypes = [...uniqueTypesSet].sort();
+        specificListContainer.innerHTML = '';
+
+        uniqueTypes.forEach(type => {
+            const lbl = document.createElement('label');
+            lbl.style.display = 'block';
+            lbl.style.marginBottom = '4px';
+            lbl.style.cursor = 'pointer';
+
+            const safeType = escapeHTML(type);
+            // Safe to inject because we just escaped 'type'
+            lbl.innerHTML = `<input type="checkbox" class="specific-type-cb" value="${safeType}" onchange="clearCheckboxesAndFilter()"> ${safeType}`;
+            specificListContainer.appendChild(lbl);
+        });
+        // =========================================================
+
+        drawTileGrid();
+
+        // Hide loading state and show content
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('activity-list').style.display = 'block';
+        document.getElementById('sidebar').setAttribute('aria-busy', 'false');
+    }
+
+    // Extracted logic to process and render a single batch of activities
+
+    function createMapLine(activity, config) {
+        const line = L.polyline(activity.coordinates, {
+            color: config.color,
+            weight: 4,
+            opacity: 0.3,
+            smoothFactor: 1
+        });
+        line.sportType = activity.type;
+        line.sportCategory = config.category;
+        line.activityData = activity;
+        return line;
+    }
+
+    function calculateActivityMetrics(activity) {
+        const rawDistanceMeters = activity.distance || 0;
+        const distanceMiles = rawDistanceMeters ? (rawDistanceMeters / 1609.34) : 0;
+        const distStr = distanceMiles > 0 ? distanceMiles.toFixed(2) + ' mi' : '--';
+
+        const timeSecs = activity.moving_time || activity.elapsed_time || 0;
+        const hours = Math.floor(timeSecs / 3600);
+        const mins = Math.floor((timeSecs % 3600) / 60);
+        const secs = timeSecs % 60;
+        let timeStr = '--';
+        if (timeSecs > 0) {
+            timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${secs}s`;
+        }
+
+        const hr = activity.average_heartrate > 0 ? Math.round(activity.average_heartrate) + ' bpm' : '--';
+        const power = activity.average_watts > 0 ? Math.round(activity.average_watts) + ' w' : '--';
+        const elev = activity.total_elevation_gain > 0 ? Math.round(activity.total_elevation_gain * 3.28084) + ' ft' : '--';
+
+        let paceStr = '--';
+        let paceLabel = 'Pace';
+
+        if (distanceMiles > 0 && timeSecs > 0) {
+            if (activity.type.includes('Ride') || activity.type.includes('VirtualRide')) {
+                paceLabel = 'Speed';
+                const mph = distanceMiles / (timeSecs / 3600);
+                paceStr = `${mph.toFixed(1)} mph`;
+            } else if (activity.type.includes('Swim')) {
+                const yds = rawDistanceMeters * 1.09361;
+                const pace100 = timeSecs / (yds / 100);
+                const pMins = Math.floor(pace100 / 60);
+                const pSecs = Math.floor(pace100 % 60);
+                paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /100y`;
+            } else {
+                const paceSecs = timeSecs / distanceMiles;
+                const pMins = Math.floor(paceSecs / 60);
+                const pSecs = Math.floor(paceSecs % 60);
+                paceStr = `${pMins}:${pSecs.toString().padStart(2, '0')} /mi`;
+            }
+        }
+
+        // Speed for sorting in descending order, raw meters per second (m/s = m / s)
+        const speedMs = timeSecs > 0 ? rawDistanceMeters / timeSecs : 0;
+
+        return { rawDistanceMeters, distanceMiles, distStr, timeSecs, timeStr, hr, power, elev, paceStr, paceLabel, speedMs };
+    }
+
+    function createSidebarItem(activity, dateStr, metrics) {
+        const listItem = document.createElement('div');
+        listItem.className = 'activity-item';
+        listItem.id = `sidebar-item-${activity.id}`;
+        listItem.setAttribute('data-type', activity.type);
+        listItem.setAttribute('data-id', String(activity.id));
+        listItem.setAttribute('role', 'button');
+        listItem.setAttribute('tabindex', '0');
+        const safeId = escapeHTML(activity.id);
+        const safeName = escapeHTML(activity.name);
+        const safeType = escapeHTML(activity.type);
+        const safeDateStr = escapeHTML(dateStr);
+
+        listItem.setAttribute('aria-expanded', 'false');
+        listItem.setAttribute('aria-controls', `extended-stats-${safeId}`);
+
+        const searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
+        listItem.setAttribute('data-search', searchString);
+
+        listItem.setAttribute('data-date', activity.start_date || activity.year);
+        listItem.setAttribute('data-distance', metrics.distanceMiles);
+        listItem.setAttribute('data-time', metrics.timeSecs);
+        listItem.setAttribute('data-speed', metrics.speedMs);
+
+        listItem.innerHTML = `
+            <h4 style="margin: 0 0 5px 0;">
+                <a href="https://intervals.icu/activities/${safeId}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" style="text-decoration: none; color: #0066ff;" aria-label="Open ${safeName} in new tab">
+                    ${safeName} <span aria-hidden="true">↗</span>
+                </a>
+            </h4>
+            <p style="margin: 0 0 5px 0; font-size: 12px; color: #555;">${getSportIcon(activity.type)} ${safeType} | ${safeDateStr}</p>
+
+            <div class="activity-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Distance</span>
+                    <strong>${metrics.distStr}</strong>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Time</span>
+                    <strong>${metrics.timeStr}</strong>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">${metrics.paceLabel}</span>
+                    <strong>${metrics.paceStr}</strong>
+                </div>
+            </div>
+
+            <div id="extended-stats-${safeId}" class="extended-stats" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc;">
+                <div class="activity-stats">
+                    <div class="stat-box">
+                        <span class="stat-label">Avg HR</span>
+                        <strong>${metrics.hr}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Avg Power</span>
+                        <strong>${metrics.power}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Elevation</span>
+                        <strong>${metrics.elev}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return listItem;
+    }
+
+    function processAndRenderBatch(activities) {
+        const listContainer = document.getElementById('activity-list');
+        const fragment = document.createDocumentFragment();
+
+        activities.forEach(activity => {
+            if (activity.type === 'VirtualRide') return;
+            if (!activity.coordinates || activity.coordinates.length === 0) return;
+
+            if (activity.visited_tiles) {
+                activity.visited_tiles.forEach(tile => visitedTiles.add(tile));
+            }
+
+            const config = getSportConfig(activity.type);
+            const line = createMapLine(activity, config);
+            line.addTo(config.group);
+
+            let dateStr = activity.year;
+            if (activity.start_date) {
+                const d = new Date(activity.start_date);
+                dateStr = d.toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
+
+            // CLUSTER HOVER
+            line.on('mouseover', function (e) {
+                clearMapHighlights();
+
+                const cluster = getOverlappingLines(e.latlng, 10);
+                cluster.sort((a, b) => new Date(b.activityData.start_date || b.activityData.year) - new Date(a.activityData.start_date || a.activityData.year));
+
+                let html = '<div style="font-family: Arial; text-align: left; max-height: 200px; overflow-y: auto;">';
+
+                cluster.forEach((l, index) => {
+                    l.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                    l.bringToFront();
+                    highlightedLines.push(l);
+
+                    if (index < 5) {
+                        const act = l.activityData;
+                        const dStr = act.start_date ? new Date(act.start_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' }) : act.year;
+                        const safeDStr = escapeHTML(dStr);
+                        const safeActId = escapeHTML(act.id);
+                        const safeActName = escapeHTML(act.name);
+
+                        html += `<div style="margin-bottom: 3px;">
+                                    <a href="https://intervals.icu/activities/${safeActId}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #333; font-size: 13px;">
+                                        ${safeActName} (${safeDStr})
+                                    </a>
+                                 </div>`;
+                    }
+                });
+
+                if (cluster.length > 5) {
+                    html += `<div style="font-size: 11px; color: #888; margin-top: 4px;">... and ${cluster.length - 5} more</div>`;
+                }
+                html += '</div>';
+
+                clusterPopup.setLatLng(e.latlng).setContent(html).openOn(map);
+            });
+
+            // UN-HOVER
+            line.on('mouseout', function () {
+                clearMapHighlights();
+            });
+
+            runningMapLines.push(line);
+
+            // Pre-calculate search string to avoid re-evaluating in loops during filtering
+            activity.searchString = `${activity.name} ${activity.type} ${activity.year}`.toLowerCase();
+
+            const metrics = calculateActivityMetrics(activity);
+            const listItem = createSidebarItem(activity, dateStr, metrics);
+
+            // Attach DOM element reference to the map line for O(1) lookups during filtering
+            line.sidebarItem = listItem;
+
+            // Click to zoom map AND expand stats
+            listItem.onclick = () => {
+                clearStartEndMarkers();
+
+                // NEW: Revert the style of the previously active line (if any)
+                if (activeActivityId) {
+                    const prevLine = runningMapLines.find(l => l.activityData.id === activeActivityId);
+                    resetLineStyle(prevLine);
+                }
+
+                // NEW: Set this activity as the actively selected one
+                activeActivityId = activity.id;
+
+                map.fitBounds(line.getBounds(), { padding: [50, 50] });
+
+                document.querySelectorAll('.extended-stats').forEach(el => {
+                    el.style.display = 'none';
+                });
+                document.querySelectorAll('.activity-item').forEach(el => el.setAttribute('aria-expanded', 'false'));
+
+                listItem.querySelector('.extended-stats').style.display = 'block';
+                listItem.setAttribute('aria-expanded', 'true');
+
+                // Add start and end markers
+                if (activity.coordinates && activity.coordinates.length > 0) {
+                    const startCoord = activity.coordinates[0];
+                    const endCoord = activity.coordinates[activity.coordinates.length - 1];
+
+                    const startIcon = L.divIcon({ className: 'start-marker' });
+                    const endIcon = L.divIcon({ className: 'end-marker' });
+
+                    currentStartMarker = L.marker(startCoord, { icon: startIcon, interactive: false }).addTo(map);
+                    currentEndMarker = L.marker(endCoord, { icon: endIcon, interactive: false }).addTo(map);
+                }
+
+                // NEW: Force the highlight to stay active
+                line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                line.bringToFront();
+            };
+
+            // Keyboard event listener for accessibility
+            listItem.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    listItem.click();
+                }
+            });
+
+            // Hover to highlight on map
+            listItem.addEventListener('mouseenter', () => {
+                line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                line.bringToFront();
+            });
+
+            listItem.addEventListener('mouseleave', () => {
+                // NEW: If this is the active activity, don't remove the highlight!
+                if (activeActivityId === activity.id) return;
+                resetLineStyle(line);
+            });
+
+            // Focus to highlight on map (for keyboard users)
+            listItem.addEventListener('focus', () => {
+                line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                line.bringToFront();
+            });
+
+            listItem.addEventListener('blur', () => {
+                if (activeActivityId === activity.id) return;
+                resetLineStyle(line);
+            });
+
+            fragment.appendChild(listItem);
+        });
+
+        listContainer.appendChild(fragment);
+    }
+
+    // Initial Load
+    initDropdown();
+
+    // ==========================================
+    // 5. FILTERING & SORTING
+    // ==========================================
+
+    let isSortAscending = false;
+
+    function toggleSortDirection() {
+        isSortAscending = !isSortAscending;
+
+        // Visual indicator could be added here if desired,
+        // e.g. rotating the icon or changing its background
+        const btn = document.getElementById('sort-dir-btn');
+        if (isSortAscending) {
+            btn.style.background = '#e9ecef';
+            btn.setAttribute('aria-label', 'Sort descending');
+            btn.setAttribute('title', 'Sort descending');
+        } else {
+            btn.style.background = 'white';
+            btn.setAttribute('aria-label', 'Sort ascending');
+            btn.setAttribute('title', 'Sort ascending');
+        }
+
+        sortActivities();
+    }
+
+    function onSortSelectChange() {
+        // Reset to descending by default when changing sort type
+        isSortAscending = false;
+        const btn = document.getElementById('sort-dir-btn');
+        btn.style.background = 'white';
+        btn.setAttribute('aria-label', 'Sort ascending');
+        btn.setAttribute('title', 'Sort ascending');
+        sortActivities();
+    }
+
+    function sortActivities() {
+        const listContainer = document.getElementById('activity-list');
+        // ⚡ Bolt Optimization: NodeList children is much faster than querySelectorAll
+        const items = Array.from(listContainer.children);
+        const sortType = document.getElementById('sort-select').value;
+
+        // ⚡ Bolt Optimization: Map the values once (Schwartzian transform) to avoid
+        // slow DOM attribute reads and float/date parsing during every sort comparison
+        const mapped = items.map(item => {
+            let val;
+            if (sortType === 'date') {
+                val = new Date(item.getAttribute('data-date')).getTime();
+            } else if (sortType === 'distance') {
+                val = parseFloat(item.getAttribute('data-distance')) || 0;
+            } else if (sortType === 'time') {
+                val = parseFloat(item.getAttribute('data-time')) || 0;
+            } else if (sortType === 'pace') {
+                val = parseFloat(item.getAttribute('data-speed')) || 0;
+            }
+            return { value: val, element: item };
+        });
+
+        mapped.sort((a, b) => {
+            let result = b.value - a.value;
+            return isSortAscending ? -result : result;
+        });
+
+        // ⚡ Bolt Optimization: Use DocumentFragment to batch DOM inserts and avoid reflows
+        const fragment = document.createDocumentFragment();
+        mapped.forEach(item => fragment.appendChild(item.element));
+        listContainer.appendChild(fragment);
+
+        // Ensure the SVG arrow icon rotates to reflect the direction
+        // By default (descending), the user wants the icon pointing down (scaleY(-1))
+        // When ascending, it returns to normal (none).
+        const btn = document.getElementById('sort-dir-btn');
+        if (btn) {
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.style.transform = isSortAscending ? 'none' : 'scaleY(-1)';
+            }
+        }
+    }
+
+    // Debounce utility to prevent UI blocking on every keystroke when typing in the search box
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    const debouncedFilterSidebar = debounce(filterSidebar, 300);
+
+    // Refresh map state when changing the year
+    function filterMapByYear() {
+        loadData(document.getElementById('year-select').value);
+    }
+
+    function clearFilters() {
+        document.getElementById('search-box').value = '';
+        selectedActivityIds = null;
+        document.getElementById('year-select').value = 'ALL';
+
+        document.getElementById('filter-cycling').checked = true;
+        document.getElementById('filter-pavement').checked = true;
+        document.getElementById('filter-dirt').checked = true;
+        document.getElementById('filter-swim').checked = true;
+        document.getElementById('filter-other').checked = true;
+
+        document.querySelectorAll('.specific-type-cb').forEach(cb => cb.checked = false);
+
+        filterSidebar();
+        loadData("ALL");
+    }
+
+    // 1. If a user clicks a broad category, uncheck all specific sports
+    function resetDropdownAndFilter() {
+        document.querySelectorAll('.specific-type-cb').forEach(cb => cb.checked = false);
+        filterSidebar();
+    }
+
+    // 2. If a user clicks a specific sport, uncheck all broad categories
+    function clearCheckboxesAndFilter() {
+        document.getElementById('filter-cycling').checked = false;
+        document.getElementById('filter-pavement').checked = false;
+        document.getElementById('filter-dirt').checked = false;
+        document.getElementById('filter-swim').checked = false;
+        document.getElementById('filter-other').checked = false;
+        filterSidebar();
+    }
+
+    // 3. The Master Filter: Responsible for coordinating all visible elements (map layers and sidebar list)
+    function filterSidebar() {
+        const query = document.getElementById('search-box').value.toLowerCase();
+
+        const specificSportsArr = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+        const specificSportsSet = specificSportsArr.length > 0 ? new Set(specificSportsArr) : null;
+        const specificColor = document.getElementById('color-specific').value;
+
+        const categoryVisibility = {
+            Cycling: document.getElementById('filter-cycling').checked,
+            Pavement: document.getElementById('filter-pavement').checked,
+            Dirt: document.getElementById('filter-dirt').checked,
+            Swim: document.getElementById('filter-swim').checked,
+            Other: document.getElementById('filter-other').checked
+        };
+
+        const configs = {
+            Cycling: { color: document.getElementById('color-cycling').value, group: window.sportGroups.Cycling },
+            Pavement: { color: document.getElementById('color-pavement').value, group: window.sportGroups.Pavement },
+            Dirt: { color: document.getElementById('color-dirt').value, group: window.sportGroups.Dirt },
+            Swim: { color: document.getElementById('color-swim').value, group: window.sportGroups.Swim },
+            Other: { color: document.getElementById('color-other').value, group: window.sportGroups.Other }
+        };
+
+        let visibleCount = 0;
+
+        // Unified loop for Map Lines and Sidebar Items
+        runningMapLines.forEach(line => {
+            const config = configs[line.sportCategory];
+            const type = line.sportType;
+            const act = line.activityData;
+            const activityId = String(act.id);
+            const item = line.sidebarItem;
+
+            let isVisible = false;
+            let itemIsVisible = false;
+
+            // NEW: Unified helper to apply style, respecting the active highlight lock
+            // ⚡ Bolt Optimization: Only call setStyle if properties have actually changed
+            // to avoid expensive Leaflet SVG redraws on every filter keystroke.
+            const applyStyle = (baseColor) => {
+                if (activeActivityId === act.id) {
+                    if (line.options.color !== '#ffff00' || line.options.weight !== 6) {
+                        line.setStyle({ color: '#ffff00', weight: 6, opacity: 1 });
+                    }
+                } else {
+                    if (line.options.color !== baseColor || line.options.weight !== 4) {
+                        line.setStyle({ color: baseColor, weight: 4, opacity: 0.3 });
+                    }
+                }
+            };
+
+            // Map Cluster Override (If a cluster is clicked, ONLY show those lines)
+            if (selectedActivityIds !== null) {
+                isVisible = selectedActivityIds.includes(activityId);
+                itemIsVisible = isVisible; // Sidebar logic matches map cluster exactly
+
+                // Maintain correct colors for the isolated lines
+                if (isVisible && specificSportsSet !== null && specificSportsSet.has(type)) {
+                     applyStyle(specificColor);
+                } else if (isVisible) {
+                     applyStyle(config.color);
+                }
+            } else {
+                // Normal Search & Checkbox Logic
+                // Use pre-calculated search string to avoid re-evaluating in loops
+                const searchString = act.searchString || `${act.name} ${act.type} ${act.year}`.toLowerCase();
+                // ⚡ Bolt Optimization: skip string evaluation if query is empty
+                const matchesSearch = query === '' || searchString.includes(query);
+
+                let matchesType = false;
+
+                if (specificSportsSet !== null) {
+                    // Check if the exact specific sport matches
+                    matchesType = specificSportsSet.has(type);
+                    if (matchesType) applyStyle(specificColor);
+                } else {
+                    applyStyle(config.color);
+                    // Check against broad category filters
+                    matchesType = categoryVisibility[line.sportCategory];
+                }
+
+                isVisible = matchesSearch && matchesType;
+                itemIsVisible = isVisible;
+            }
+
+            // Physically add or remove the line from the map
+            if (isVisible) {
+                if (!config.group.hasLayer(line)) config.group.addLayer(line);
+            } else {
+                if (config.group.hasLayer(line)) config.group.removeLayer(line);
+            }
+
+            // Toggle sidebar item visibility via stored reference
+            // ⚡ Bolt Optimization: Only update DOM display style if it's actually changing
+            // to prevent browser layout thrashing.
+            if (item) {
+                if (itemIsVisible) {
+                    if (item.style.display !== 'block') item.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    if (item.style.display !== 'none') item.style.display = 'none';
+                }
+            }
+        });
+
+        // Toggle Empty State UI
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) {
+            if (visibleCount === 0 && runningMapLines.length > 0) {
+                if (emptyState.style.display !== 'block') emptyState.style.display = 'block';
+            } else {
+                if (emptyState.style.display !== 'none') emptyState.style.display = 'none';
+            }
+        }
+
+        // Announce search results for screen readers
+        const announcer = document.getElementById('search-announcer');
+        if (announcer && runningMapLines.length > 0) {
+            announcer.textContent = `Showing ${visibleCount} activities`;
+        }
+    }
+
+    function toggleFilters() {
+        const container = document.getElementById('filter-container');
+        const icon = document.getElementById('filter-icon');
+        const btn = document.getElementById('filter-toggle-btn');
+
+        if (container.style.display === 'none' || container.style.display === '') {
+            container.style.display = 'flex';
+            icon.textContent = '▲';
+            btn.setAttribute('aria-expanded', 'true');
+        } else {
+            container.style.display = 'none';
+            icon.textContent = '▼';
+            btn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function updateSportColor(baseType, newColor) {
+        runningMapLines.forEach(line => {
+            let match = false;
+            const t = line.sportType;
+
+            if (baseType === 'Cycling' && (t.includes('Ride') || t.includes('VirtualRide') || t.includes('EBike'))) match = true;
+            else if (baseType === 'Pavement' && (t === 'Run' || t === 'Walk')) match = true;
+            else if (baseType === 'Dirt' && (t === 'Hike' || t === 'TrailRun')) match = true;
+            else if (baseType === 'Swim' && t.includes('Swim')) match = true;
+            else if (baseType === 'Other' && !t.includes('Ride') && !t.includes('VirtualRide') && !t.includes('EBike') && t !== 'Run' && t !== 'Walk' && t !== 'Hike' && t !== 'TrailRun' && !t.includes('Swim')) match = true;
+
+            // NEW: Ensure we don't accidentally override the currently active yellow highlight
+            if (match && activeActivityId !== line.activityData.id) {
+                line.setStyle({ color: newColor });
+            }
+        });
+    }
+
+    function updateSpecificSportColor(newColor) {
+        const specificSports = Array.from(document.querySelectorAll('.specific-type-cb:checked')).map(cb => cb.value);
+
+        if (specificSports.length > 0) {
+            runningMapLines.forEach(line => {
+                // NEW: Ensure we don't accidentally override the currently active yellow highlight
+                if (specificSports.includes(line.sportType) && activeActivityId !== line.activityData.id) {
+                    line.setStyle({ color: newColor });
+                }
+            });
+        }
+    }
+
+    // Global keyboard shortcut for search box
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '/') {
+            const activeTag = document.activeElement ? document.activeElement.tagName : '';
+            if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
+                e.preventDefault();
+                document.getElementById('search-box').focus();
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
