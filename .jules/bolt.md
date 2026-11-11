@@ -68,3 +68,9 @@
 **Learning:** When checking spatial intersections on polylines segment-by-segment (like finding map lines near a cursor click), repeatedly calling `map.project(coords[i])` and `map.project(coords[i+1])` inside the loop redundantly projects the same coordinate twice.
 
 **Action:** Cache the projected end point of the previous segment to use as the starting point of the next segment. This effectively halves the number of expensive `map.project` calls and provides a measurable speedup during spatial search operations.
+
+## 2023-11-20 - Optimize filtering with itertools.islice
+
+**Learning:** When applying an expensive element-wise operation (like `round()`) to a large list and then immediately downsampling it via slicing (e.g., `[::4]`), it is highly inefficient because 75% of the calculated values are immediately discarded.
+
+**Action:** Use a generator expression to lazily evaluate the data stream and `itertools.islice` to select only the elements that will be kept *before* applying the expensive operation.
