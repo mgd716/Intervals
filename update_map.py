@@ -4,6 +4,7 @@ import time
 import math
 import datetime
 import logging
+from itertools import islice
 from requests.auth import HTTPBasicAuth
 from supabase import create_client, Client
 from typing import Dict, Any, List
@@ -46,7 +47,9 @@ def fetch_gps_stream(activity_id):
                     lats = stream.get("data", [])
                     lngs = stream.get("data2", [])
                     if lats and lngs:
-                       return [[round(lat, 5), round(lng, 5)] for lat, lng in zip(lats, lngs) if lat is not None and lng is not None][::4]
+                       # ⚡ Bolt Optimization: Use generator expression and islice to avoid computing round() and allocating objects for discarded points
+                       valid_pairs = ((lat, lng) for lat, lng in zip(lats, lngs) if lat is not None and lng is not None)
+                       return [[round(lat, 5), round(lng, 5)] for lat, lng in islice(valid_pairs, 0, None, 4)]
     return None
     
 def get_tile(lat, lon, zoom):
