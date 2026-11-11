@@ -167,8 +167,8 @@ def main():
         print("Error: Missing credentials. Check your GitHub Secrets!")
         return
         
-    if not SUPABASE_URL.startswith("http"):
-        print("Error: SUPABASE_URL must start with http:// or https://")
+    if not SUPABASE_URL.startswith("https://"):
+        print("Error: SUPABASE_URL must start with https://")
         return
 
     try:
