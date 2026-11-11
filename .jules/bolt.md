@@ -68,3 +68,7 @@
 **Learning:** When checking spatial intersections on polylines segment-by-segment (like finding map lines near a cursor click), repeatedly calling `map.project(coords[i])` and `map.project(coords[i+1])` inside the loop redundantly projects the same coordinate twice.
 
 **Action:** Cache the projected end point of the previous segment to use as the starting point of the next segment. This effectively halves the number of expensive `map.project` calls and provides a measurable speedup during spatial search operations.
+
+## 2024-06-25 - [Generator Expressions for Efficient Processing]
+ **Learning:** [When dealing with large arrays that need element-wise operations (like `round()`) and subsequent downsampling via slicing (e.g., `[::4]`), using list comprehensions eagerly evaluates and allocates memory for the entire list before discarding most of it. This is inefficient.]
+ **Action:** [Use a generator expression combined with `itertools.islice` to lazily evaluate the data. This avoids unnecessary computation and memory allocation for elements that will be immediately discarded by the slice, leading to significant performance gains on large data streams.]
